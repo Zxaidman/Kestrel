@@ -386,4 +386,40 @@ class PortraitPlacementDocumentTest {
         )
         assertTrue(outcome is Outcome.Failure, "a width of 99 was accepted upright: $outcome")
     }
+
+    @Test
+    fun `a shape may differ between the two orientations`() {
+        val original = ok(oneElement(""))
+        val edited = original.copy(
+            elements = original.elements.map {
+                it.copy(
+                    portraitPlacement = it.placement,
+                    portraitShape = ControlShape.SQUARE,
+                )
+            }
+        )
+
+        val again = ok(Json.write(ControllerLayoutWriter.write(edited))).elements.single()
+        assertEquals(ControlShape.SQUARE, again.portraitShape)
+        assertEquals(ControlShape.CIRCLE, again.shapeFor(portrait = false))
+        assertEquals(ControlShape.SQUARE, again.shapeFor(portrait = true))
+    }
+
+    @Test
+    fun `no portrait shape means the landscape one`() {
+        val element = ok(oneElement("")).elements.single()
+        assertNull(element.portraitShape)
+        assertEquals(element.shape, element.shapeFor(portrait = true))
+    }
+
+    @Test
+    fun `a portrait shape this build does not know is refused`() {
+        val outcome = read(
+            oneElement(
+                ""","portrait":{"anchor":"bottom-left","offsetX":0.1,"offsetY":0.1,"width":0.1,""" +
+                    """"shape":"hexagon"}"""
+            )
+        )
+        assertTrue(outcome is Outcome.Failure, "an unknown upright shape was accepted: $outcome")
+    }
 }

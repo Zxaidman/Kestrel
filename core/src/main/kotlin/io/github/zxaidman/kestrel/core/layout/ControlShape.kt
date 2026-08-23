@@ -44,8 +44,14 @@ public enum class ControlShape(public val wireName: String) {
  *
  * Asked by the overlay and by the editor's preview, so the two cannot drift apart.
  */
-public fun LayoutElement.effectiveShape(): ControlShape = when {
-    shape == ControlShape.CIRCLE -> ControlShape.CIRCLE
-    kind == ControlKind.STICK || kind == ControlKind.DPAD -> ControlShape.CIRCLE
-    else -> shape
+public fun LayoutElement.effectiveShape(): ControlShape = effectiveShapeFor(portrait = false)
+
+/** The same rule, for the orientation being drawn — a shape may differ between the two. */
+public fun LayoutElement.effectiveShapeFor(portrait: Boolean): ControlShape {
+    val declared = shapeFor(portrait)
+    return when {
+        declared == ControlShape.CIRCLE -> ControlShape.CIRCLE
+        kind == ControlKind.STICK || kind == ControlKind.DPAD -> ControlShape.CIRCLE
+        else -> declared
+    }
 }

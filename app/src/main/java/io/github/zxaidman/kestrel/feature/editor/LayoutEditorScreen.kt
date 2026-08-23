@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -38,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -71,7 +73,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.zxaidman.kestrel.core.common.Outcome
+import io.github.zxaidman.kestrel.core.input.AnalogProfile
 import io.github.zxaidman.kestrel.core.layout.Anchor
+import io.github.zxaidman.kestrel.core.layout.BuiltInLayouts
 import io.github.zxaidman.kestrel.core.layout.Cluster
 import io.github.zxaidman.kestrel.core.layout.Clustering
 import io.github.zxaidman.kestrel.core.layout.ControlKind
@@ -82,12 +86,13 @@ import io.github.zxaidman.kestrel.core.layout.LayoutSurface
 import io.github.zxaidman.kestrel.core.layout.PixelRect
 import io.github.zxaidman.kestrel.core.layout.Placement
 import io.github.zxaidman.kestrel.core.layout.centeredAt
-import io.github.zxaidman.kestrel.core.layout.effectiveShape
+import io.github.zxaidman.kestrel.core.layout.effectiveShapeFor
 import io.github.zxaidman.kestrel.core.layout.isWithin
 import io.github.zxaidman.kestrel.core.layout.resolve
 import io.github.zxaidman.kestrel.core.layout.scaledBy
 import io.github.zxaidman.kestrel.core.layout.shapedAs
 import io.github.zxaidman.kestrel.core.settings.EditorPreferences
+import io.github.zxaidman.kestrel.core.settings.KestrelSettings
 import io.github.zxaidman.kestrel.platform.display.DeviceSurface
 import io.github.zxaidman.kestrel.platform.session.SessionState
 import io.github.zxaidman.kestrel.platform.settings.AppSettings
@@ -226,6 +231,12 @@ public fun LayoutEditorScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            val strays = working.elements.filter { element ->
+                !element.placementFor(portrait).scaledBy(controlScale.toDouble()).resolve(device)
+                    .shapedAs(element.effectiveShapeFor(portrait))
+                    .isWithin(device)
+            }.map { it.id }
+
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FloatingActionButton(onClick = { toolsOpen = true }) {
                     Icon(Icons.Filled.Settings, contentDescription = "Settings")
@@ -235,6 +246,19 @@ public fun LayoutEditorScreen(
                 FloatingActionButton(
                     onClick = { onPreviewOrientation(!landscape) },
                 ) { Icon(Icons.Filled.Refresh, contentDescription = "Turn the phone") }
+                // Only when there is something to rescue. A button that is always there for a case
+                // that almost never happens is a button in the way; one that appears when it is
+                // needed is an offer of help.
+                if (strays.isNotEmpty()) {
+                    FloatingActionButton(
+                        containerColor = Color(0xFFE0603A),
+                        onClick = {
+                            working = working.withStraysBroughtBack(strays, portrait)
+                            dirty = true
+                            message = "${strays.size} put back where the built-in has them."
+                        },
+                    ) { Icon(Icons.Filled.Home, contentDescription = "Bring strays back") }
+                }
                 FloatingActionButton(
                     containerColor = if (dirty) {
                         MaterialTheme.colorScheme.primary
@@ -255,11 +279,31 @@ public fun LayoutEditorScreen(
                 ) { Text("Exit") }
             }
 
+            // The band is not a warning by itself — a control there is fine while a game is
+            // full screen, which is nearly always. It stops being fine the moment the bars are
+            // showing, and that is worth naming rather than leaving to be discovered mid-play.
+            val underBars = bars?.let { band ->
+                working.elements.filter { element ->
+                    val rect = element.placementFor(portrait)
+                        .scaledBy(controlScale.toDouble())
+                        .resolve(device)
+                        .shapedAs(element.effectiveShapeFor(portrait))
+                    rect.top < band.top || rect.bottom > band.bottom ||
+                        rect.left < band.left || rect.right > band.right
+                }.map { it.id }
+            }.orEmpty()
+
             if (bars != null) {
                 Caption(
-                    text = "The lighter band is the system bars and the camera cutout. Controls " +
-                        "there work, and share that strip with the system.",
-                    modifier = Modifier.widthIn(max = 320.dp),
+                    text = if (underBars.isEmpty()) {
+                        "The lighter band is where the system bars and the camera cutout are."
+                    } else {
+                        "${underBars.size} in the lighter band. They work while a game is full " +
+                            "screen — but while the status bar or the gesture bar is showing, the " +
+                            "system takes those touches and Kestrel never sees them."
+                    },
+                    colour = if (underBars.isEmpty()) Color(0xFFE8EBEF) else Color(0xFFF2B441),
+                    modifier = Modifier.widthIn(max = 340.dp),
                 )
             }
             Caption(
@@ -272,14 +316,9 @@ public fun LayoutEditorScreen(
                 Caption(text = it.summary(device, portrait), modifier = Modifier.widthIn(max = 320.dp))
             }
 
-            val strays = working.elements.count { element ->
-                !element.placementFor(portrait).scaledBy(controlScale.toDouble()).resolve(device)
-                    .shapedAs(element.effectiveShape())
-                    .isWithin(device)
-            }
-            if (strays > 0) {
+            if (strays.isNotEmpty()) {
                 Caption(
-                    text = "$strays outside the screen entirely — the pad will not match this.",
+                    text = "${strays.size} off the screen — the pad will not match this.",
                     colour = Color(0xFFE0603A),
                 )
             }
@@ -308,7 +347,7 @@ public fun LayoutEditorScreen(
                     typingNumbers = true
                 },
                 onShape = { shape ->
-                    working = working.replacing(menuElement.copy(shape = shape))
+                    working = working.replacing(menuElement.withShapeFor(portrait, shape))
                     dirty = true
                 },
                 onStep = { updated ->
@@ -317,12 +356,12 @@ public fun LayoutEditorScreen(
                 },
                 portrait = portrait,
                 onCopy = {
-                    copied = ControlStyle.of(menuElement)
+                    copied = ControlStyle.of(menuElement, portrait)
                     menuFor = null
                 },
                 onPaste = {
                     copied?.let { style ->
-                        working = working.replacing(style.appliedTo(menuElement))
+                        working = working.replacing(style.appliedTo(menuElement, portrait))
                         dirty = true
                     }
                     menuFor = null
@@ -355,6 +394,11 @@ public fun LayoutEditorScreen(
                     },
                 )
 
+                PadTools(
+                    portrait = portrait,
+                    onPersist = { AppSettings.persist(context) },
+                )
+
                 GridTools(
                     gridUnit = gridUnit,
                     onGrid = {
@@ -381,6 +425,7 @@ public fun LayoutEditorScreen(
     if (typingNumbers && selected != null) {
         NumbersDialog(
             element = selected,
+            portrait = portrait,
             onDismiss = { typingNumbers = false },
             onApply = { updated ->
                 working = working.replacing(updated)
@@ -594,16 +639,19 @@ private data class ControlStyle(
     val shape: ControlShape,
     val family: ControlFamily,
 ) {
-    fun appliedTo(element: LayoutElement): LayoutElement = element.copy(
-        shape = shape,
-        placement = element.placement.copy(width = width, height = height),
-    )
+    fun appliedTo(element: LayoutElement, portrait: Boolean): LayoutElement =
+        element.withShapeFor(portrait, shape).let {
+            it.withPlacementFor(
+                portrait,
+                it.placementFor(portrait).copy(width = width, height = height),
+            )
+        }
 
     companion object {
-        fun of(element: LayoutElement) = ControlStyle(
-            width = element.placement.width,
-            height = element.placement.height,
-            shape = element.shape,
+        fun of(element: LayoutElement, portrait: Boolean) = ControlStyle(
+            width = element.placementFor(portrait).width,
+            height = element.placementFor(portrait).height,
+            shape = element.shapeFor(portrait),
             family = element.kind.family(),
         )
     }
@@ -663,62 +711,60 @@ private fun ControlMenu(
     onDismiss: () -> Unit,
 ) {
     MenuAt(landscape = landscape, onDismiss = onDismiss) {
-        run {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "${element.id}  ·  ${element.kind.family().label}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onDismiss) { Text("×") }
-            }
+        MenuHeader(
+            title = element.id,
+            detail = element.kind.family().label,
+            onDismiss = onDismiss,
+        )
 
-            KButton(onClick = onSize, modifier = Modifier.fillMaxWidth()) { Text("size") }
-
-            // Everything that can be done to one control, at the control. The tools sheet used to
-            // hold half of this; when editing moved here it had to move completely, or removing the
-            // sheet's copy would have quietly lost the half that never arrived.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                KButton(onClick = { onStep(element.resizedBy(-STEP, portrait)) }) {
-                    Text("−", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                }
-                KButton(onClick = { onStep(element.resizedBy(STEP, portrait)) }) {
-                    Text("+", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                }
-                KButton(onClick = { onStep(element.taller(STEP, portrait)) }) { Text("taller") }
-                KButton(onClick = { onStep(element.taller(-STEP, portrait)) }) { Text("shorter") }
-            }
+        // Two to a row, not one long button each. The menu was taller than a portrait screen and
+        // `copy` was simply off the bottom of it — a button nobody could reach, in a menu whose
+        // whole point is being reachable.
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            KButton(onClick = onSize, modifier = Modifier.weight(1f)) { Text("values") }
             KOutlinedButton(
                 onClick = { onStep(element.withNextAnchor(portrait)) },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(element.placement.anchor.wireName) }
+                modifier = Modifier.weight(1f),
+            ) { Text(element.placementFor(portrait).anchor.wireName) }
+        }
 
-            KButton(onClick = onSize, modifier = Modifier.fillMaxWidth()) { Text("⋮ values") }
-
-            ShapeChoice(current = element.shape, enabled = true, onShape = onShape)
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                KButton(onClick = onCopy) { Text("copy") }
-                // Shown only when what is on the clipboard means something here. There is no
-                // greyed-out paste, because "why is this disabled" is a worse question than "where
-                // is paste" has an answer for.
-                if (copied != null && copied.family == element.kind.family()) {
-                    KButton(onClick = onPaste) { Text("paste") }
-                }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            KButton(onClick = { onStep(element.resizedBy(-STEP, portrait)) }) {
+                Text("−", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
-            if (copied != null && copied.family != element.kind.family()) {
-                Text(
-                    text = "copied a ${copied.family.label} size — it means nothing here",
-                    style = MaterialTheme.typography.labelSmall,
-                )
+            KButton(onClick = { onStep(element.resizedBy(STEP, portrait)) }) {
+                Text("+", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
+            KButton(onClick = { onStep(element.taller(STEP, portrait)) }) { Text("taller") }
+            KButton(onClick = { onStep(element.taller(-STEP, portrait)) }) { Text("shorter") }
+        }
+
+        ShapeChoice(
+            current = element.effectiveShapeFor(portrait),
+            enabled = true,
+            onShape = onShape,
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            KButton(onClick = onCopy) { Text("copy") }
+            // Shown only when what is on the clipboard means something here. There is no greyed-out
+            // paste, because "why is this disabled" is a worse question than "where is paste" has
+            // an answer for.
+            if (copied != null && copied.family == element.kind.family()) {
+                KButton(onClick = onPaste) { Text("paste") }
+            }
+        }
+        if (copied != null && copied.family != element.kind.family()) {
+            Text(
+                text = "copied a ${copied.family.label} size — it means nothing here",
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }
@@ -921,6 +967,116 @@ private fun gridLabel(unit: Double, device: LayoutSurface): String =
     "%.2f · %d px".format(unit, (unit * device.shortSide).roundToInt())
 
 /**
+ * The settings that shape what the pad does, where the pad is being arranged.
+ *
+ * Size, dead zone, curve, sensitivity and inversion were on the diagnostics screen, which is the
+ * one place they could not be judged: nothing is being played there and the pad is not on screen.
+ * Here they are a slider away from the thing they change.
+ *
+ * **Size is per orientation** and the others are not, deliberately. A pad's size is a matter of
+ * where the thumbs are, which the orientation decides; a dead zone is a matter of the hardware and
+ * the hand, which it does not.
+ */
+@Composable
+private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
+    val settings = AppSettings.current.value
+    val stick = settings.stickProfile
+
+    fun shape(update: (AnalogProfile) -> AnalogProfile) {
+        AppSettings.update { it.copy(stickProfile = update(it.stickProfile)) }
+        // The pad on screen is handed the new shaping straight away. Tuning a dead zone and then
+        // having to put the controls up again to feel it is tuning by memory.
+        SessionState.profile = AppSettings.current.value.stickProfile
+    }
+
+    Spacer(modifier = Modifier.height(2.dp))
+    Text("Pad", style = MaterialTheme.typography.labelLarge)
+
+    val size = (if (portrait) settings.controlScalePortrait else settings.controlScale).toFloat()
+    Text(
+        text = "size — %s  %.0f%%".format(if (portrait) "portrait" else "landscape", size * 100),
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
+    )
+    Slider(
+        value = size,
+        onValueChange = { raw ->
+            val snapped = Math.round(raw * 100f) / 100f
+            AppSettings.update {
+                if (portrait) it.copy(controlScalePortrait = snapped.toDouble())
+                else it.copy(controlScale = snapped.toDouble())
+            }
+            SessionState.controlScale.value = snapped
+            SessionState.overlay?.resize(snapped)
+        },
+        onValueChangeFinished = onPersist,
+        valueRange = KestrelSettings.MIN_CONTROL_SCALE.toFloat()
+            ..KestrelSettings.MAX_CONTROL_SCALE.toFloat(),
+    )
+
+    Spacer(modifier = Modifier.height(2.dp))
+    Text("Sticks", style = MaterialTheme.typography.labelLarge)
+    ShapedSlider("dead zone", stick.deadzone.toFloat(), 0f..0.5f, onPersist) { v ->
+        shape { it.copy(deadzone = v.toDouble()) }
+    }
+    ShapedSlider("curve", stick.curve.toFloat(), 0.4f..3f, onPersist) { v ->
+        shape { it.copy(curve = v.toDouble()) }
+    }
+    ShapedSlider("sensitivity", stick.sensitivity.toFloat(), 0.5f..2.5f, onPersist) { v ->
+        shape { it.copy(sensitivity = v.toDouble()) }
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Switch(
+            checked = stick.invertX,
+            onCheckedChange = { on ->
+                shape { it.copy(invertX = on) }
+                onPersist()
+            },
+        )
+        Text("invert X", style = MaterialTheme.typography.bodyMedium)
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Switch(
+            checked = stick.invertY,
+            onCheckedChange = { on ->
+                shape { it.copy(invertY = on) }
+                onPersist()
+            },
+        )
+        Text("invert Y", style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun ShapedSlider(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onPersist: () -> Unit,
+    onValue: (Float) -> Unit,
+) {
+    Text(
+        text = "%s  %.2f".format(label, value),
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
+    )
+    Slider(
+        // Written as the finger moves and persisted when it lifts: a slider produces a value per
+        // frame, and sixty writes for one decision is sixty writes to the user's storage.
+        value = value,
+        onValueChange = { onValue(Math.round(it * 100f) / 100f) },
+        onValueChangeFinished = onPersist,
+        valueRange = range,
+    )
+}
+
+/**
  * Which arrangement is on screen, and how to start the other one.
  *
  * A layout holds two: landscape and portrait. This says which is being edited, whether the other
@@ -1076,13 +1232,18 @@ private fun GridTools(
 @Composable
 private fun NumbersDialog(
     element: LayoutElement,
+    portrait: Boolean,
     onDismiss: () -> Unit,
     onApply: (LayoutElement) -> Unit,
 ) {
-    var offsetX by remember { mutableStateOf("%.2f".format(element.placement.offsetX)) }
-    var offsetY by remember { mutableStateOf("%.2f".format(element.placement.offsetY)) }
-    var width by remember { mutableStateOf("%.2f".format(element.placement.width)) }
-    var height by remember { mutableStateOf("%.2f".format(element.placement.height)) }
+    // The arrangement for the orientation on screen. Reading and writing `placement` regardless was
+    // a fault with the worst possible shape: dragging edited the right one and typing edited the
+    // other, so the same screen did two different things depending on how you asked.
+    val current = element.placementFor(portrait)
+    var offsetX by remember { mutableStateOf("%.2f".format(current.offsetX)) }
+    var offsetY by remember { mutableStateOf("%.2f".format(current.offsetY)) }
+    var width by remember { mutableStateOf("%.2f".format(current.width)) }
+    var height by remember { mutableStateOf("%.2f".format(current.height)) }
     var problem by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -1097,7 +1258,7 @@ private fun NumbersDialog(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = "Offsets run from the ${element.placement.anchor.wireName} anchor to " +
+                    text = "Offsets run from the ${current.anchor.wireName} anchor to " +
                         "the control's centre, inwards. All four are fractions of the screen's " +
                         "shorter side.",
                     style = MaterialTheme.typography.bodySmall,
@@ -1135,16 +1296,17 @@ private fun NumbersDialog(
                     return@KButton
                 }
                 val candidate = Placement.of(
-                    anchor = element.placement.anchor,
+                    anchor = current.anchor,
                     offsetX = round(numbers[0]!!),
                     offsetY = round(numbers[1]!!),
                     width = round(numbers[2]!!),
                     height = round(numbers[3]!!),
-                    rotationDegrees = element.placement.rotationDegrees,
+                    rotationDegrees = current.rotationDegrees,
                 )
                 when (candidate) {
                     is Outcome.Failure -> problem = candidate.error.message
-                    is Outcome.Success -> onApply(element.copy(placement = candidate.value))
+                    is Outcome.Success ->
+                        onApply(element.withPlacementFor(portrait, candidate.value))
                 }
             }) { Text("Apply") }
         },
@@ -1241,6 +1403,47 @@ private fun LayoutElement.withGroupStep(options: List<String?>, step: Int): Layo
     return copy(group = options[next])
 }
 
+/**
+ * Puts the named controls back where the shipped layout has them, and changes nothing else.
+ *
+ * **Position only** — not size, not shape, not which window it is in. A control that has been
+ * dragged off the screen needs rescuing, and rescuing it by resetting everything about it would
+ * throw away work that was never the problem.
+ *
+ * The built-in is the source of the answer because it is the only arrangement Kestrel can be sure
+ * is on the screen: `BuiltInLayoutsTest` checks exactly that, at every size and in both
+ * orientations. A control the built-in does not have keeps its anchor and comes in to a sensible
+ * distance from it, which is the best that can be said without inventing a position.
+ */
+private fun ControllerLayout.withStraysBroughtBack(
+    ids: List<String>,
+    portrait: Boolean,
+): ControllerLayout {
+    val shipped = when (val outcome = BuiltInLayouts.load(BuiltInLayouts.XBOX_DEFAULT)) {
+        is Outcome.Failure -> null
+        is Outcome.Success -> outcome.value
+    }
+    return copy(
+        elements = elements.map { element ->
+            if (element.id !in ids) return@map element
+            val home = shipped?.element(element.id)?.placement
+            val current = element.placementFor(portrait)
+            val rescued = if (home != null) {
+                current.copy(anchor = home.anchor, offsetX = home.offsetX, offsetY = home.offsetY)
+            } else {
+                current.copy(
+                    offsetX = current.width.coerceAtLeast(RESCUE_OFFSET),
+                    offsetY = current.height.coerceAtLeast(RESCUE_OFFSET),
+                )
+            }
+            element.withPlacementFor(portrait, rescued)
+        }
+    )
+}
+
+/** Far enough from an edge that a whole control fits, for a control the built-in never had. */
+private const val RESCUE_OFFSET = 0.20
+
 private fun ControllerLayout.replacing(element: LayoutElement): ControllerLayout =
     copy(elements = elements.map { if (it.id == element.id) element else it })
 
@@ -1252,7 +1455,7 @@ private fun ControllerLayout.clustersOn(
     this,
     elements.map {
         it.id to it.placementFor(portrait).scaledBy(scale.toDouble()).resolve(surface)
-            .shapedAs(it.effectiveShape())
+            .shapedAs(it.effectiveShapeFor(portrait))
     },
 )
 
@@ -1360,7 +1563,7 @@ private fun EditorCanvas(
 
     fun rectOf(fit: Fit, element: LayoutElement): PixelRect =
         element.placementFor(livePortrait).scaledBy(liveScale.toDouble()).resolve(fit.surface)
-            .shapedAs(element.effectiveShape())
+            .shapedAs(element.effectiveShapeFor(livePortrait))
 
     fun hit(fit: Fit, at: Offset): String? {
         val x = (at.x - fit.left).toDouble()
@@ -1368,7 +1571,7 @@ private fun EditorCanvas(
         // Last first, so the control drawn on top is the one selected.
         return liveLayout.elements.reversed().firstOrNull { element ->
             val rect = rectOf(fit, element)
-            when (element.effectiveShape()) {
+            when (element.effectiveShapeFor(livePortrait)) {
                 ControlShape.CIRCLE ->
                     hypot(x - rect.centerX, y - rect.centerY) <= min(rect.width, rect.height) / 2
                 else -> abs(x - rect.centerX) <= rect.width / 2 &&
@@ -1467,7 +1670,7 @@ private fun EditorCanvas(
             drawWindows(fitted, Clustering.group(layout, placed), selectedId)
         }
         layout.elements.forEachIndexed { index, element ->
-            drawControl(fitted, element, placed[index].second, element.id == selectedId)
+            drawControl(fitted, element, livePortrait, placed[index].second, element.id == selectedId)
         }
         // The subject of the menu is the only thing left lit. Drawn here rather than as a scrim
         // behind the menu, because only the canvas knows where the control is.
@@ -1479,7 +1682,7 @@ private fun EditorCanvas(
             )
             val index = layout.elements.indexOfFirst { it.id == dimExcept }
             if (index >= 0) {
-                drawControl(fitted, layout.elements[index], placed[index].second, true)
+                drawControl(fitted, layout.elements[index], livePortrait, placed[index].second, true)
             }
         }
         guides.forEach { guide -> drawGuide(fitted, guide) }
@@ -1522,7 +1725,7 @@ private fun snap(
     toEdges: Boolean,
 ): Snapped {
     val rect = element.placementFor(portrait).scaledBy(scale.toDouble()).resolve(fit.surface)
-        .shapedAs(element.effectiveShape())
+        .shapedAs(element.effectiveShapeFor(portrait))
     val threshold = max(6.0, min(fit.width, fit.height) * 0.02)
     val step = gridUnit * fit.surface.shortSide
 
@@ -1530,7 +1733,7 @@ private fun snap(
         .filter { it.id != element.id }
         .map {
             it.placementFor(portrait).scaledBy(scale.toDouble()).resolve(fit.surface)
-                .shapedAs(it.effectiveShape())
+                .shapedAs(it.effectiveShapeFor(portrait))
         }
 
     val verticalLines = buildList {
@@ -1703,6 +1906,7 @@ private fun DrawScope.drawWindows(fit: Fit, clusters: List<Cluster>, selectedId:
 private fun DrawScope.drawControl(
     fit: Fit,
     element: LayoutElement,
+    portrait: Boolean,
     rect: PixelRect,
     selected: Boolean,
 ) {
@@ -1722,7 +1926,7 @@ private fun DrawScope.drawControl(
     val stroke = if (selected || outside) 6f else 3f
     val centre = Offset(fit.left + rect.centerX.toFloat(), fit.top + rect.centerY.toFloat())
 
-    when (element.effectiveShape()) {
+    when (element.effectiveShapeFor(portrait)) {
         ControlShape.CIRCLE -> {
             val radius = (min(rect.width, rect.height) / 2).toFloat()
             drawCircle(fill, radius, centre)

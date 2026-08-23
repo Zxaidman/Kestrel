@@ -93,6 +93,19 @@ public data class LayoutElement(
      * existed means, and what a new layout means until somebody arranges the other orientation.
      */
     public val portraitPlacement: Placement? = null,
+
+    /**
+     * The outline used upright, or `null` to use [shape] in both.
+     *
+     * Shape travelled with identity at first, on the grounds that what a control *is* does not
+     * change when the phone turns. The project owner's point is better: a shape is presentation, and
+     * presentation is exactly what an orientation is allowed to differ in. A shoulder button that is
+     * a wide rectangle across a landscape screen has no width to be wide in upright.
+     *
+     * What a control *does* is still stated once — kind, binding and group cannot differ between
+     * orientations, and those are the fields that would make a control a different control.
+     */
+    public val portraitShape: ControlShape? = null,
     public val unknownFields: Map<String, ConfigNode> = emptyMap(),
 ) {
     /**
@@ -104,6 +117,14 @@ public data class LayoutElement(
      */
     public fun placementFor(portrait: Boolean): Placement =
         if (portrait) portraitPlacement ?: placement else placement
+
+    /** The outline for the orientation being drawn, before the kind has had its say. */
+    public fun shapeFor(portrait: Boolean): ControlShape =
+        if (portrait) portraitShape ?: shape else shape
+
+    /** The same control with its outline for one orientation replaced. */
+    public fun withShapeFor(portrait: Boolean, shape: ControlShape): LayoutElement =
+        if (portrait) copy(portraitShape = shape) else copy(shape = shape)
 
     /** The same control with its arrangement for one orientation replaced. */
     public fun withPlacementFor(portrait: Boolean, placement: Placement): LayoutElement =
@@ -312,15 +333,36 @@ public object ControllerLayoutReader {
         // build that does not know this field keeps it in `unknownFields` and writes it back
         // untouched, so an old Kestrel opening a new file preserves the portrait arrangement it
         // cannot use. Bumping the version would have made that file unreadable instead.
-        val portraitPlacement = when (val node = obj["portrait"]) {
-            null, ConfigNode.Null -> null
-            else -> when (val o = ConfigReader.asObject(node, path.child("portrait"))) {
-                is Outcome.Failure -> return o
-                is Outcome.Success -> when (
-                    val p = readPlacement(o.value, path.child("portrait"))
+        var portraitPlacement: Placement? = null
+        var portraitShape: ControlShape? = null
+        when (val node = obj["portrait"]) {
+            null, ConfigNode.Null -> Unit
+            else -> {
+                val upright = when (val o = ConfigReader.asObject(node, path.child("portrait"))) {
+                    is Outcome.Failure -> return o
+                    is Outcome.Success -> o.value
+                }
+                portraitPlacement = when (
+                    val p = readPlacement(upright, path.child("portrait"))
                 ) {
                     is Outcome.Failure -> return p
                     is Outcome.Success -> p.value
+                }
+                // An explicit `null` counts as absent. The writer emits every field including the
+                // ones that are not set, so that a person opening the file sees what there is to
+                // set — which means "present" and "has a value" are different questions here.
+                portraitShape = if (upright["shape"].let { it == null || it == ConfigNode.Null }) {
+                    null
+                } else {
+                    when (
+                        val sh = ConfigReader.enum(
+                            upright, "shape", ControlShape.entries.toTypedArray(),
+                            { it.wireName }, path.child("portrait"),
+                        )
+                    ) {
+                        is Outcome.Failure -> return sh
+                        is Outcome.Success -> sh.value
+                    }
                 }
             }
         }
@@ -335,6 +377,7 @@ public object ControllerLayoutReader {
                 group = group,
                 placement = placement,
                 portraitPlacement = portraitPlacement,
+                portraitShape = portraitShape,
                 unknownFields = obj.unknownFields(KNOWN_ELEMENT_FIELDS),
             )
         )
@@ -501,7 +544,15 @@ public object ControllerLayoutWriter {
 
         fields += placementFields(element.placement)
         fields["portrait"] = element.portraitPlacement
-            ?.let { ConfigNode.Obj(placementFields(it)) }
+            ?.let { upright ->
+                ConfigNode.Obj(
+                    placementFields(upright).also { portrait ->
+                        portrait["shape"] = element.portraitShape
+                            ?.let { ConfigNode.Text(it.wireName) }
+                            ?: ConfigNode.Null
+                    }
+                )
+            }
             ?: ConfigNode.Null
         fields += element.unknownFields
         return ConfigNode.Obj(fields)

@@ -52,15 +52,15 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.32-dev`
+## State of the queue — build `0.0.33-dev`
 
 | Phase | Items |
 | --- | --- |
-| `done` | `CRIT-5`, `BUG-1`, `BUG-2`, `BUG-9`–`BUG-23` (bar 3–8), `FEAT-10`–`FEAT-12`, `FEAT-14`, `FEAT-16`–`FEAT-24`, `FEAT-26` — thirty-two |
+| `done` | thirty-nine, including `CRIT-5` and `FEAT-15`. Every entry from `BUG-9`–`BUG-28` except `BUG-24` and `BUG-27`, and `FEAT-10`–`FEAT-29` except `FEAT-13` |
 | `superseded` | `FEAT-13` |
-| `testing` | `FEAT-15` per-orientation layouts; `BUG-24`–`BUG-28`, `FEAT-25`, `FEAT-28`, `FEAT-29` |
+| `testing` | `BUG-24`, `BUG-27`, `BUG-29`–`BUG-31`, `FEAT-31`, `FEAT-32`, `FEAT-34`, `FEAT-35` |
 | `building` | — |
-| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`; `FEAT-30` next |
+| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33` |
 
 ---
 
@@ -145,7 +145,7 @@ one action once the contents are agreed — and once `CRIT-1` is done.
 
 ### `CRIT-5` — The editor must draw the phone, not the page
 
-**Phase:** `done` — confirmed on the device in `0.0.29-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Kind:** critical. Named first by the project owner, ahead of everything else on this list.  
 **Found by:** Reported, build `0.0.25-dev`.
@@ -180,7 +180,7 @@ would mean building each one twice.
 
 ### `BUG-1` — The overlay does not draw into the cutout area
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Reported**, `0.0.25-dev`, with a screenshot. Kestrel's own screen now uses the notch area
 correctly; **the controller overlay does not**. On the reference device the left-hand controls stop
@@ -197,7 +197,7 @@ whether or not the user asked it to.
 
 ### `BUG-2` — The "use the notch area" setting does not reach the overlay
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Reported**, `0.0.25-dev`: *"yes, except for gamepad"*. Toggling the setting changes Kestrel's own
 screen and leaves the controls where they were. A setting that works in one place and silently does
@@ -325,7 +325,7 @@ version bump and a `docs/CONFIGURATION_SCHEMA.md` update) and a control in setti
 
 ### `BUG-9` — A square draws as a rectangle, in the editor only
 
-**Phase:** `done` — confirmed on the device in `0.0.26-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Found by:** Reported, build `0.0.25-dev`. Reproducible values given: `width 0.24`, `height 0.12`,
 shape `square`.
@@ -343,7 +343,7 @@ Same drawing path as `CRIT-5`, so it is fixed there rather than separately.
 
 ### `BUG-10` — The canvas is the usable area, not the phone, so the pad does not match it
 
-**Phase:** `done` — confirmed on the device in `0.0.29-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported and reproduced from the numbers, build `0.0.26-dev`.
 
 **The fault, exactly.** The canvas draws **2289 × 927** — the usable area, with the system bars and
@@ -366,7 +366,7 @@ proportions. A control that leaves the usable area is then visibly leaving it, a
 
 ### `BUG-11` — `Edit layout` cannot be reached in portrait
 
-**Phase:** `done` — confirmed on the device in `0.0.27-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.26-dev`.
 
 Three buttons — *Copy layout to my folder*, *Reload layout*, *Edit layout* — sit in one row that
@@ -377,7 +377,7 @@ sideways. The editor is unreachable without turning the phone.
 
 ### `BUG-12` — Turning the phone inside the editor throws you back to the home page
 
-**Phase:** `done` — confirmed on the device in `0.0.27-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.26-dev`.
 
 The activity is recreated on a configuration change, so every piece of editor state — which page is
@@ -392,7 +392,7 @@ without losing a thing.
 
 ### `BUG-13` — The numbers dialog does not fit in landscape and will not scroll
 
-**Phase:** `done` — confirmed on the device in `0.0.27-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.26-dev`.
 
 Four fields stacked vertically in a dialog on a short landscape screen: **width** and **height** are
@@ -405,7 +405,7 @@ Two fields per row, and the body scrolls.
 
 ### `BUG-14` — A minus sign cannot be typed on the numeric keyboard
 
-**Phase:** `done` — confirmed on the device in `0.0.27-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.26-dev`: *"The Android keyboard only shows numbers."*
 
 The fields ask for a decimal keyboard. On this device's keyboard that appears to be digits and a
@@ -421,7 +421,7 @@ depending on which keyboard someone uses.
 
 ### `BUG-15` — The pad should use the whole screen, and both sides should agree on which screen
 
-**Phase:** `done` — confirmed on the device in `0.0.29-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Decided by the project owner, build `0.0.27-dev`:** *"i want the gamepad and it's window to always
 use the whole screen 2400x1080."*
 
@@ -449,7 +449,7 @@ canvas so it can be seen while arranging rather than discovered while playing.
 
 ### `BUG-16` — `⋮ values` disappears in landscape
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.27-dev`. Present in portrait, gone in landscape.
 
 The control tools are a row that does not wrap. With the panel at a quarter of a landscape screen
@@ -460,7 +460,7 @@ in a different row. Tools have to wrap rather than run off an edge.
 
 ### `BUG-17` — The editor drew the document; the pad draws the document at the size setting
 
-**Phase:** `done` — confirmed on the device in `0.0.29-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported as an observation and it was the right one — *"buttons size representation in
 Canva is not aligned with actual gamepad size maybe this could be why outside warning is shown."*
 
@@ -480,7 +480,7 @@ top of it, which must not change by editing.
 
 ### `BUG-18` — The canvas is a picture of the screen and should be the size of it
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with screenshots, build `0.0.28-dev`.
 
 The canvas is fitted with a 4% margin, left over from when it shared the screen with a panel. It has
@@ -494,7 +494,7 @@ makes "does the pad match the editor" a question anyone can answer by looking.
 
 ### `BUG-19` — The home page header does not scroll
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"i don't want kestrel on homescreen as freeze header across scroll."*
 
 The title sits outside the scrolling area, so it holds a band of a small screen permanently. It
@@ -504,7 +504,7 @@ belongs in the scroll with everything else.
 
 ### `BUG-20` — The canvas border has nothing left to mark
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.29-dev`. *"there 1px maybe still shows as white."*
 
 The stroke around the canvas existed to say where the picture of the phone ended. The picture is now
@@ -515,7 +515,7 @@ screen already marks. It goes.
 
 ### `BUG-21` — A white band across the top and bottom of the home page
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.29-dev`. Sides are fine; top and bottom are not.
 
 Vertical padding on a full-screen page, applied outside the scrolling area, so it is a permanent
@@ -525,7 +525,7 @@ band rather than a margin that scrolls away. The horizontal padding is doing a r
 
 ### `BUG-22` — The long-press menu opens off the screen
 
-**Phase:** `done` — confirmed on the device in `0.0.31-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.29-dev`, and it made `FEAT-19`'s point 12 untestable.
 
 The menu is clamped against a **guessed** height, so a menu taller than the guess still runs off the
@@ -541,7 +541,7 @@ that is where thumbs are — so this is the normal case, not the edge case.
 
 ### `BUG-23` — The menu appears off screen and then jumps
 
-**Phase:** `done` — confirmed on the device in `0.0.31-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.30-dev`. *"it open outside of screen then suddenly popup in right
 place."*
 
@@ -554,7 +554,7 @@ then made visible, which costs a frame nobody can see instead of a frame everybo
 
 ### `BUG-24` — The close button in the menu is too small to hit
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Found by:** Reported, build `0.0.30-dev`.
 
 A `×` in a text button, which is a glyph with almost no target around it, in a menu opened by a
@@ -565,7 +565,7 @@ which is what people try first.
 
 ### `BUG-25` — The toggle sits on the camera in portrait
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.30-dev`.
 
 Since the pad took the whole screen, the `K` toggle in portrait sits directly over the front camera —
@@ -578,7 +578,7 @@ Landscape is unaffected: the cutout is on a short edge there and the toggle is n
 
 ### `BUG-26` — The toggle keeps its portrait offset after turning the phone
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.31-dev`. *"portrait now it is clear but it also made changes in
 landscape."*
 
@@ -593,7 +593,7 @@ The toggle is repositioned with everything else.
 
 ### `BUG-27` — The close button is still too small
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Found by:** Reported with a screenshot, build `0.0.31-dev`.
 
 44dp is the platform's minimum, which is a floor rather than a size. In a menu opened by a thumb and
@@ -603,12 +603,45 @@ closed by the same thumb it should be obviously larger than the smallest thing a
 
 ### `BUG-28` — The band caption is in the wrong place and across the pad
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with a screenshot, build `0.0.31-dev`. *"caption is not even above floating
 button"*, and it runs the width of the screen across the controls.
 
 It was added below the buttons rather than above them, and given no width limit, so it is a bar of
 text lying over the pad it is describing. Above the buttons, and no wider than they are.
+
+---
+
+### `BUG-29` — Typing a number edited the wrong orientation
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.32-dev`. Dragging in portrait moved the portrait arrangement;
+typing in the values dialog moved the landscape one, from the same screen.
+
+The dialog read and wrote `placement` directly while everything else had moved to
+`placementFor(portrait)`. It is the worst shape a fault can have — the same screen doing two
+different things depending on how you ask it — and it is the second time this project has been
+caught by one copy of a rule not being updated with the other.
+
+---
+
+### `BUG-30` — A control under the system bars cannot be touched while they are showing
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported with screenshots, build `0.0.32-dev`. A control dragged into the band gets no
+touches.
+
+**This cannot be fixed, and pretending otherwise would be worse than saying so.** The status bar and
+the gesture bar are the system's own windows and they sit above every application overlay. A touch
+that lands on one goes to the system; Kestrel is not offered it and cannot ask to be.
+
+**What is true and useful:** while a game is full screen — which is nearly always, and is what a
+handheld is for — the bars are not there and a control in that strip works normally. The failure is
+specific to the bars being visible.
+
+So the editor **names it**: it counts the controls in the band and says, in the band's own caption,
+that the system takes those touches while the bars are showing. A caption that only said "the
+lighter band is the system bars" was a fact with no consequence attached to it.
 
 ---
 
@@ -727,7 +760,7 @@ there is one implementation than when there are two.
 
 ### `FEAT-10` — A window editor, on the same screen
 
-**Phase:** `done` — confirmed on the device in `0.0.26-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Asked for:** build `0.0.25-dev` round.
 
@@ -753,7 +786,7 @@ question rather than letting them discover it in a game.
 
 ### `FEAT-11` — A grid, and snapping
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Asked for:** build `0.0.25-dev` round.
 
@@ -773,7 +806,7 @@ finding it.
 
 ### `FEAT-12` — Type the numbers
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 
 **Asked for:** build `0.0.25-dev` round.
 
@@ -809,7 +842,7 @@ pad is best done with the phone in portrait — which `BUG-12` currently makes i
 
 ### `FEAT-14` — The grid measured in the layout's own unit
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"the button is 0.12 and the grid is 32px both are different scales so it is not very
 helpful. Make it both are the same scale"*
 
@@ -829,7 +862,7 @@ The selected control's size is shown in both units for the same reason.
 
 ### `FEAT-15` — One layout, two orientations
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"config should now have both orientation segregation."*
 
 Today a layout is one arrangement, and both orientations are derived from it by anchors and by
@@ -864,7 +897,7 @@ orientation in use), the overlay (swap on rotation without dropping a held contr
 
 ### `FEAT-16` — The editor is the canvas, with three buttons floating on it
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"instead of 3:1 canvas whole screen display the Canva and with three floating
 button, options (where all the tools and options will go as overlay menu), save, exit. in both
 orientation."*
@@ -884,7 +917,7 @@ screen, it wants the screen, because it is a picture of the screen.
 
 ### `FEAT-17` — Previewing the other orientation turns the phone
 
-**Phase:** `done` — confirmed on the device in `0.0.28-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"pressing portrait preview should rotate the app to portrait view for editing period
 only once outside app should follow chosen orientation."*
 
@@ -900,7 +933,7 @@ the display settings say.
 
 ### `FEAT-18` — Rotation as a fourth floating button
 
-**Phase:** `done` — confirmed on the device in `0.0.29-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"add a 4th floating button next to tools for rotation orientation. and then remove it
 from the tools section. it should show rotation icon."*
 
@@ -912,7 +945,7 @@ orientation section leaves the tools entirely.
 
 ### `FEAT-19` — Long press a control for the things done to one control
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"Long press on the gamepad button should open the small floating menu near it with
 four options: size (direct open :value dialog), shape (showing rect., circle, square), copy (only
 size & shape) and only show paste option once copy to supported buttons."*
@@ -937,7 +970,7 @@ refused. The menu says which family a control is in, so nobody has to guess why 
 
 ### `FEAT-20` — A shape should look like the shape
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"instead of text use icon or shape to represent it, in both tools and popup. and
 this should be true for anything which can use visual instead of text just like rotation. (keep it
 bold & size visible)"*
@@ -955,7 +988,7 @@ invent one control at a time.
 
 ### `FEAT-21` — The same menu in window mode
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"add similar popup dialog for window mode editor which only show options, not copy
 and paste."*
 
@@ -968,7 +1001,7 @@ already does.
 
 ### `FEAT-22` — Material design, and three ways to be dark
 
-**Phase:** `done` — confirmed on the device in `0.0.30-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"Material UI design for whole app with light mode, grey dark mode, amoled dark
 mode."*
 
@@ -993,7 +1026,7 @@ theme. Making the pad follow the application's theme would make it invisible hal
 
 ### `FEAT-23` — AMOLED is a property of dark, not a third theme
 
-**Phase:** `done` — confirmed on the device in `0.0.31-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"make Amoled toggle rather than options in dark mode only. Also make all binary
 option as a Android capsule toggle design."*
 
@@ -1010,7 +1043,7 @@ been.
 
 ### `FEAT-24` — The sheet is settings now, because editing moved to the control
 
-**Phase:** `done` — confirmed on the device in `0.0.31-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"now that we can do many layout editing via long press popup, it is time we remove
 it from tools sheet and rename it settings use gear icon here. and make in landscape view reduce its
 width. and same in portrait reduce its height."*
@@ -1031,7 +1064,7 @@ worse while looking cleaner.
 
 ### `FEAT-25` — Snapping is remembered, and now across restarts
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"snapping setting in editor should be saved per session."*
 
 Grid size and both snapping switches survive closing and reopening the editor. Somebody who turns
@@ -1046,7 +1079,7 @@ real; the request settles it.
 
 ### `FEAT-26` — Buttons are rounded rectangles
 
-**Phase:** `done` — confirmed on the device in `0.0.31-dev`. Written up in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"app ui buttons should be rounded rectangle Instead of capsule like or maybe give
 option for this in settings."*
 
@@ -1074,7 +1107,7 @@ been drawn since `0.0.28-dev` and explained only in a changelog nobody reads whi
 
 ### `FEAT-28` — The long-press menu opens in the middle, with everything else out of the way
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"Long press popup should always open in the mid center with everything blurred or
 darkened behind it except the selected button… make identify header bigger, boulder and more
 noticeable… The portrait view should makes a popup horizontal and in landscape view keep it
@@ -1097,7 +1130,7 @@ control being edited and the menu editing it.
 
 ### `FEAT-29` — Real icons, not glyphs from a font
 
-**Phase:** `testing` — built in `0.0.32-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"use icons from free copyright google icons, icons8 and flatcons website. don't
 hardcode it."*
 
@@ -1116,7 +1149,7 @@ and adding one is a licence question to answer at the time rather than in advanc
 
 ### `FEAT-30` — The toggle is part of the layout
 
-**Phase:** `pending` — next, and held back on purpose while `FEAT-15` changes the same file.
+**Phase:** `pending` — next, with `FEAT-33`.
 **Asked for:** *"make K button editable both editor and json and customisable theme like rest of
 gamepad. use gamepad icon."*
 
@@ -1133,6 +1166,106 @@ write and two ways to be wrong. It is next.
 away has lost their phone until they reboot it, which has happened once here. So whatever the
 document says, the toggle stays reachable — it is not scaled by the size setting, and a layout that
 puts it off the screen is a layout the editor refuses rather than warns about.
+
+---
+
+### `FEAT-31` — A shape belongs to an orientation too
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"move the shape to portrait also, because it is customisable."*
+
+Right, and it corrects the line drawn in `FEAT-15`. Shape went with identity on the grounds that
+what a control *is* does not change when the phone turns. But a shape is presentation, and
+presentation is exactly what an orientation is allowed to differ in: a shoulder button that is a
+wide rectangle across a landscape screen has no width to be wide in upright.
+
+Kind, binding and group still cannot differ — those are the fields that would make a control a
+different control.
+
+---
+
+### `FEAT-32` — A way back for a control that has left the screen
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"add one more floating button on which only appears if gamepad is out of bound to
+resets only his position to default placement without effecting size and shape etc."*
+
+A fifth floating button that exists only while something is off the screen, and puts those controls
+back where the shipped layout has them. **Position only** — not size, not shape, not which window
+they are in. A control dragged off the edge needs rescuing, and rescuing it by resetting everything
+about it throws away work that was never the problem.
+
+The built-in is the source of the answer because it is the only arrangement Kestrel can be *sure*
+is on the screen — `BuiltInLayoutsTest` checks exactly that, at every size, in both orientations.
+
+---
+
+### `FEAT-33` — A font for the application, including one somebody brings
+
+**Phase:** `pending` — held for its own round; the custom-font half is a storage job, not a font job.
+**Asked for:** *"Add option for app font style… System default… few Games related font which are
+available on google font or any free license font… And lastly user custom font file from file
+picker (.tff and any support one)."*
+
+Three parts, and they are three different sizes of job:
+
+1. **The system font**, which is what happens now.
+2. **A few bundled faces** with a licence that permits redistribution — SIL Open Font License, which
+   is what most of Google Fonts uses. Each one bundled is a file in the repository, an entry in
+   `THIRD_PARTY_LICENSES.md`, and about 100–400 KB in the APK.
+3. **A face the user supplies**, chosen through the document picker. This one is not a font
+   question, it is a storage question: a `.ttf` picked from anywhere has to be copied into Kestrel's
+   own folder — a picker gives a URI that may not be readable tomorrow — validated as a real font
+   before it is used, and it must fail to a readable screen rather than to a blank one.
+
+**Held for its own round**, because the third part is the whole of it and it deserves being done
+properly rather than alongside eight other things.
+
+---
+
+### `FEAT-34` — The menu fits, and one button does one thing
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported with screenshots, build `0.0.32-dev`.
+
+`size` and `⋮ values` opened the same dialog, which is two buttons for one action and a third of the
+menu's height spent saying so. With every other control on a full-width row the menu was taller than
+a portrait screen, and `copy` was simply off the bottom of it — a button nobody could reach, in a
+menu whose whole point is being reachable.
+
+One `values` button, sharing its row with the anchor. The steppers on one wrapping row. Nothing
+full-width that does not need to be.
+
+---
+
+### `FEAT-35` — The pad's own settings live where the pad is
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"Control size and deadzone, curve, sensitivity and invert x and y should live inside
+the editor setting menu."*
+
+They were on the diagnostics screen, which is the one place they cannot be judged: nothing is being
+played there and the pad is not on screen. In the editor's settings sheet they are a slider away
+from the thing they change.
+
+**Size is per orientation and the shaping is not**, deliberately. A pad's size is a matter of where
+the thumbs are, which the orientation decides. A dead zone is a matter of the hardware and the hand,
+which it does not.
+
+---
+
+### `BUG-31` — The menu header and close button were never actually changed
+
+**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported with screenshots, build `0.0.32-dev`, after being reported as done.
+
+`FEAT-28` wrote a `MenuHeader` with a large bold title and a 56dp icon button. The window menu got
+it. **The control menu did not** — the edit that was supposed to replace its header matched nothing,
+made no change, and reported no error, so the old small text and the old `×` stayed exactly where
+they were while the changelog said otherwise.
+
+**Do:** when an edit replaces existing text, check the text is gone afterwards. A search-and-replace
+that finds nothing is not a no-op, it is a silent failure to do the work.
 
 ---
 
@@ -1428,6 +1561,30 @@ show the rectangle and its share of the screen rather than only the `group` name
   control → `FEAT-28`.
 - **Icons come from Material icons**, already on the dependency list → `FEAT-29`.
 - **`FEAT-15` is started**: one document, two placement sets, and a size setting per orientation.
+
+
+
+### Round `0.0.32-dev` — two arrangements, tested
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1, 2 | Portrait gets its own arrangement, as a copy | **Working** |
+| 3, 4 | Editing one orientation | Dragging **works**; typing edited landscape from the portrait screen → `BUG-29` |
+| 5–8 | Landscape untouched, saved, in the file, dropped again | **Working.** Shape should be per orientation too → `FEAT-31` |
+| 9, 10 | Size per orientation | **Working.** Size, dead zone, curve, sensitivity and inversion should live in the editor's settings → `FEAT-35` |
+| 11 | Centred menu with everything else dimmed | **Working** |
+| 12 | Header and close button | **Not applied at all** — the change was written and never reached `ControlMenu` → `BUG-31`. Menu too tall, `copy` off the bottom, and `size` and `⋮ values` opened the same dialog → `FEAT-34` |
+| 13, 14 | Popup shape by orientation | **Working**, bar the close icon |
+| 15 | Icons | Working except the close `×`, for the same reason as `BUG-31` |
+| 16, 17 | Snapping persists, toggle repositions | **Working** |
+| 18 | Controls in the system-bar band | No touches there → `BUG-30`, and it cannot be fixed, only told |
+| 19 | Regression | **None.** A way back for a stray control → `FEAT-32` |
+
+### Decisions this round
+
+- **Shape is per orientation** → `FEAT-31`, correcting where `FEAT-15` drew the line.
+- **The pad's own settings move into the editor** → `FEAT-35`.
+- **Fonts get their own round** → `FEAT-33`.
 
 
 ### Awaiting

@@ -13,6 +13,53 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.33-dev` — Shape Follows The Orientation, And Two Things That Did Not Ship
+
+**Two arrangements per layout works** — portrait was given its own, edited, saved, and landscape was
+untouched. `FEAT-15` is done. Two things about it were wrong.
+
+**Typing edited the other orientation.** Dragging in portrait moved the portrait arrangement and the
+values dialog moved the landscape one, from the same screen. It read and wrote `placement` while
+everything else had moved to `placementFor(portrait)`. That is the second fault of exactly this
+shape in this project — one copy of a rule updated and not the other — and the second one the project
+owner found rather than a test.
+
+**And the line between identity and presentation was drawn wrongly.** Shape went with kind, binding
+and group on the grounds that what a control *is* does not change when the phone turns. A shape is
+presentation, and presentation is what an orientation is allowed to differ in: a shoulder button
+that is a wide rectangle across a landscape screen has no width to be wide in upright. Shape is now
+per orientation; kind, binding and group still are not, because those would make a control a
+different control.
+
+**Two changes reported as shipped had not shipped.** The larger, bolder menu header and the icon
+close button reached the window menu and never reached the control menu — the edit that was supposed
+to replace it matched nothing, changed nothing, reported nothing. The rule that comes out of it is in
+`done-list.md`: a search-and-replace that finds nothing is not a no-op, it is a silent failure to do
+the work, and the way to catch it is to check the old text is gone.
+
+**The menu fits now.** `size` and `⋮ values` opened the same dialog — two buttons for one action —
+and with everything on a full-width row the menu was taller than a portrait screen, with `copy`
+simply off the bottom of it.
+
+**A control under the system bars cannot be touched while those bars are showing, and that cannot be
+fixed.** The status bar and the gesture bar are the system's own windows, above every application
+overlay; a touch landing on one is never offered to Kestrel. What is true is that a game is nearly
+always full screen, and then the strip works normally. So the editor counts the controls in the band
+and says what happens to them when the bars appear, instead of a caption that named the band and
+attached no consequence to it.
+
+Also: a fifth floating button appears only while a control is off the screen and puts it back where
+the shipped layout has it — position only, not size or shape, because a control that was dragged too
+far does not need everything about it undone. And the pad's own settings — size, dead zone, curve,
+sensitivity, inversion — move into the editor's settings sheet, which is the only place they can be
+judged: the diagnostics screen has nothing being played and no pad on screen.
+
+**Thirty-nine items `done`**, including `FEAT-15` and `CRIT-5`.
+
+**Next:** `FEAT-30`, the toggle as part of the layout, and `FEAT-33`, fonts — the second held for its
+own round because the custom-font half is a storage problem rather than a font one.
+
+
 ### `0.0.32-dev` — One Layout, Two Arrangements
 
 `FEAT-15`, decided two rounds ago and built now on its own because it changes what a layout file

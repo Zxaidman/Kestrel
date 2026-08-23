@@ -395,41 +395,6 @@ public fun InputPreviewScreen(
                     Text("Copy layout to my folder")
                 }
             }
-            // Two sliders' worth of setting behind one slider: which one is being moved depends on
-            // which way the phone is being held, because that is the orientation the number is for.
-            val portraitNow = androidx.compose.ui.platform.LocalConfiguration.current.let {
-                it.screenHeightDp > it.screenWidthDp
-            }
-            val padScale = AppSettings.current.value.let {
-                if (portraitNow) it.controlScalePortrait else it.controlScale
-            }.toFloat()
-            Mono(
-                "\ncontrol size — %s  %.0f%%".format(
-                    if (portraitNow) "portrait" else "landscape",
-                    padScale * 100,
-                )
-            )
-            Slider(
-                value = padScale,
-                onValueChange = { raw ->
-                    val it = snap(raw)
-                    SessionState.controlScale.value = it
-                    // Written before the overlay is told, because the overlay reads the setting for
-                    // the orientation it is in when it re-measures. Telling it first meant it read
-                    // the number that was there a moment ago.
-                    AppSettings.update { s ->
-                        if (portraitNow) s.copy(controlScalePortrait = it.toDouble())
-                        else s.copy(controlScale = it.toDouble())
-                    }
-                    // Applied to the windows already on screen rather than by putting them up
-                    // again, so a control being held is not dropped mid-press.
-                    SessionState.overlay?.resize(it)
-
-                },
-                onValueChangeFinished = { AppSettings.persist(context) },
-                valueRange = KestrelSettings.MIN_CONTROL_SCALE.toFloat()
-                    ..KestrelSettings.MAX_CONTROL_SCALE.toFloat(),
-            )
             Mono(
                 "\nThe controls on this screen reach the controller only while Kestrel is in " +
                     "front, and that is a limit of where they are rather than of the controller: " +
@@ -594,50 +559,17 @@ public fun InputPreviewScreen(
             )
         }
 
-        Section("Shaping") {
-            // Written when a drag ends rather than on every frame of it: a slider produces a value
-            // per frame, and sixty writes for one decision is sixty writes to the user's storage.
-            Labelled("Dead zone", deadzone)
-            Slider(
-                value = deadzone,
-                onValueChange = { v -> shape { it.copy(deadzone = snap(v).toDouble()) } },
-                onValueChangeFinished = { AppSettings.persist(context) },
-                valueRange = 0f..0.5f,
-            )
-            Labelled("Curve", curve)
-            Slider(
-                value = curve,
-                onValueChange = { v -> shape { it.copy(curve = snap(v).toDouble()) } },
-                onValueChangeFinished = { AppSettings.persist(context) },
-                valueRange = 0.4f..3f,
-            )
-            Labelled("Sensitivity", sensitivity)
-            Slider(
-                value = sensitivity,
-                onValueChange = { v -> shape { it.copy(sensitivity = snap(v).toDouble()) } },
-                onValueChangeFinished = { AppSettings.persist(context) },
-                valueRange = 0.5f..2.5f,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Switch(
-                    checked = invertY,
-                    onCheckedChange = { v ->
-                        shape { it.copy(invertY = v) }
-                        AppSettings.persist(context)
-                    },
-                )
-                Mono("Invert Y")
-            }
-            Mono(
-                "\nPush the stick slowly. Just past the dead zone the output should start from " +
-                    "nothing and grow — never jump. That is the property the tests assert and the " +
-                    "one you can only judge with a thumb."
+        Section("Shaping and size") {
+            // Moved into the layout editor's settings sheet, which is the one place they can be
+            // judged: the pad is on screen there and a slider is next to the thing it changes.
+            // Here nothing is being played and the controls are not up.
+            Text(
+                text = "Control size, dead zone, curve, sensitivity and inversion live in the " +
+                    "layout editor now — open it and press the gear. They are next to the pad " +
+                    "there, which is the only place their effect can be seen.",
+                style = MaterialTheme.typography.bodySmall,
             )
         }
-
         Section("Profile matching") {
             val profiles = listOf(
                 ProfileSummary(idOf("user.default"), "Default", ProfileScope.Default),

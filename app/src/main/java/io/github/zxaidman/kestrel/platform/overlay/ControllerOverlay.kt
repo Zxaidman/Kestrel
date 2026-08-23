@@ -26,7 +26,7 @@ import io.github.zxaidman.kestrel.core.layout.ControllerLayout
 import io.github.zxaidman.kestrel.core.layout.LayoutElement
 import io.github.zxaidman.kestrel.core.layout.LayoutSurface
 import io.github.zxaidman.kestrel.core.layout.PixelRect
-import io.github.zxaidman.kestrel.core.layout.effectiveShape
+import io.github.zxaidman.kestrel.core.layout.effectiveShapeFor
 import io.github.zxaidman.kestrel.core.layout.resolve
 import io.github.zxaidman.kestrel.core.layout.scaledBy
 import io.github.zxaidman.kestrel.platform.input.GamepadCodes
@@ -301,6 +301,7 @@ public class ControllerOverlay(
                 // Local to the window, so a view never needs to know where on the screen it is.
                 PlacedControl(
                     element = element,
+                    portrait = portrait,
                     centerX = (rect.centerX - bounds.left).toFloat(),
                     centerY = (rect.centerY - bounds.top).toFloat(),
                     halfWidth = (rect.width / 2).toFloat(),
@@ -459,6 +460,8 @@ public class ControllerOverlay(
 /** One control, resolved onto the window that holds it. */
 private class PlacedControl(
     val element: LayoutElement,
+    /** Which arrangement this was placed from, because a shape may differ between the two. */
+    val portrait: Boolean,
     val centerX: Float,
     val centerY: Float,
     val halfWidth: Float,
@@ -472,7 +475,7 @@ private class PlacedControl(
     // Asked of the domain rather than decided here, so the editor's preview and the pad a player
     // holds cannot disagree about what a shape means. A stick and a pad come back round whatever
     // the document says, for the reason recorded there.
-    val shape: ControlShape get() = element.effectiveShape()
+    val shape: ControlShape get() = element.effectiveShapeFor(portrait)
 
     /** The radius a round control is drawn at, and the reach every control is measured against. */
     val radius: Float get() = min(halfWidth, halfHeight)
