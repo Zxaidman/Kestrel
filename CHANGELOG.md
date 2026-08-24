@@ -13,6 +13,42 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.34-dev` — The Sliders Reach The Pad, And The Cutout Stops Being A Band
+
+**The stick shaping never reached the pad in your hand.** `ControllerOverlay.update(profile)` exists
+to replace the analog shaping on controls already on screen, and nothing ever called it. Every dead
+zone, curve, sensitivity and inversion change wrote a number to a file and left the pad exactly as it
+was — which is why they all felt identical. The feature was built, saved, tested and reported working
+with the half that matters not connected.
+
+**The camera cutout is not a system bar, and shading it as one was wrong.** The status bar and the
+gesture bar are the system's own windows: they sit above every overlay and take the touches that land
+on them. A cutout is a hole in the panel with nothing drawn over it, and a control beside it works
+whether the phone is full screen or not. The band is the system bars alone now, and seven controls
+stop being swept into a warning that never applied to them.
+
+**The buttons are one block that moves and hides.** They were pinned to the middle — the one place a
+pad never is, right until a control is dragged there, and then they sit on top of the thing being
+edited with no way to move either. Drag them anywhere; long press for Hide, which fades them to a
+fifth and stops them taking touches at all, so the pad underneath can be dragged *through* them.
+Touching any control brings them back, because a hidden panel recoverable only from a menu inside
+itself would be a way to lose Save and Exit.
+
+Also: the screen is drawn in nine with two brighter lines each way, which is how a layout is
+actually talked about; and the shape choice is no longer offered for sticks and pads, which are drawn
+round whatever the file says.
+
+**The supplied layout is not the new built-in, and the reason is measured.** It was sent as the new
+default and checked against the rules the shipped layout keeps: `R3` overlaps `Start` at the default
+size, and the d-pad overlaps `Select` and `L2` above 89% — the left column holds the pad, `L3`, `L1`,
+`Select` and `L2` in one strip and there is no room for them at 100%. The size slider goes to 100%,
+so shipping it would give anyone who drags it up a d-pad under the Select button. It is a good
+personal layout at the size it was arranged at, it is untouched on the device, and three ways forward
+are written down for the project owner to choose between rather than one being picked here.
+
+**Forty-eight items `done`**, including every bug from `BUG-9` to `BUG-31`.
+
+
 ### `0.0.33-dev` — Shape Follows The Orientation, And Two Things That Did Not Ship
 
 **Two arrangements per layout works** — portrait was given its own, edited, saved, and landscape was

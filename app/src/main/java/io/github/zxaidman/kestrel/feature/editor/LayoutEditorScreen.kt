@@ -139,7 +139,10 @@ public fun LayoutEditorScreen(
     // whichever it is, it is the same answer the pad itself asks for. The bars are still measured
     // so the band can be drawn: a control under the status bar is allowed and worth seeing.
     val wholeScreen = AppSettings.current.value.display.drawUnderCutout
-    val screen = remember(configuration) { DeviceSurface.screen(context) }
+    // The bars only. The camera cutout is not shaded, because a control in it works whether or not
+    // the phone is full screen — it is the system's *windows* that take touches, and the cutout is
+    // not one.
+    val screen = remember(configuration) { DeviceSurface.screen(context, cutoutCounts = false) }
     val device = remember(configuration, wholeScreen) {
         DeviceSurface.forPad(context, wholeScreen)
     }
@@ -179,6 +182,13 @@ public fun LayoutEditorScreen(
     var menuFor by remember(layout.header.id) { mutableStateOf<String?>(null) }
     var copied by remember { mutableStateOf<ControlStyle?>(null) }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
+    // The buttons and their captions are one block that can be dragged anywhere and put out of the
+    // way. It was pinned to the middle, which is the one place a pad never is — right up until a
+    // control is dragged there, and then it is on top of the thing being edited with no way to move
+    // either of them.
+    var panel by remember { mutableStateOf(Offset.Zero) }
+    var panelHidden by remember { mutableStateOf(false) }
+    var panelMenu by remember { mutableStateOf(false) }
 
     val selected = working.element(selectedId ?: "")
     val landscape = device.widthPx >= device.heightPx
@@ -212,6 +222,9 @@ public fun LayoutEditorScreen(
             onSelect = {
                 selectedId = it
                 menuFor = null
+                // Touching a control brings the panel back. A hidden panel that could only be
+                // recovered from a menu inside itself would be a way to lose Save and Exit.
+                if (it != null) panelHidden = false
             },
             onLongPress = { id, _ ->
                 selectedId = id
@@ -227,7 +240,27 @@ public fun LayoutEditorScreen(
         // corners and edges a thumb reaches, and the centre is what a game is played through.
         // Anywhere else and these would sit on top of the thing being arranged.
         Column(
-            modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .offset { IntOffset(panel.x.roundToInt(), panel.y.roundToInt()) }
+                .graphicsLayer { alpha = if (panelHidden) HIDDEN_PANEL_ALPHA else 1f }
+                .then(
+                    // A hidden panel is a picture, not a thing: it takes no touches at all, so the
+                    // pad underneath can be worked on through it.
+                    if (panelHidden) {
+                        Modifier
+                    } else {
+                        Modifier.pointerInput(Unit) {
+                            detectDragGestures { change, dragged ->
+                                change.consume()
+                                panel += dragged
+                            }
+                        }.pointerInput(Unit) {
+                            detectTapGestures(onLongPress = { panelMenu = true })
+                        }
+                    }
+                )
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -323,6 +356,32 @@ public fun LayoutEditorScreen(
                 )
             }
             if (message.isNotBlank()) Caption(text = message)
+        }
+
+        if (panelMenu) {
+            AlertDialog(
+                onDismissRequest = { panelMenu = false },
+                title = { Text("These buttons") },
+                text = {
+                    Text(
+                        "Drag them anywhere. Hidden, they fade and stop taking touches, so the pad " +
+                            "underneath can be worked on through them — touching any control " +
+                            "brings them back."
+                    )
+                },
+                confirmButton = {
+                    KButton(onClick = {
+                        panelHidden = true
+                        panelMenu = false
+                    }) { Text("Hide") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        panel = Offset.Zero
+                        panelMenu = false
+                    }) { Text("Back to the middle") }
+                },
+            )
         }
 
         val menuElement = working.element(menuFor ?: "")
@@ -476,6 +535,9 @@ public enum class EditorMode(public val label: String) {
 
 private val GRID_SIZES = listOf(0.02, 0.04, 0.06, 0.10)
 private const val DEFAULT_GRID = 0.04
+
+/** Faded far enough to see the pad through, and not so far that it cannot be found again. */
+private const val HIDDEN_PANEL_ALPHA = 0.22f
 
 /** A step small enough to place a control with and large enough to feel like a press. */
 private const val STEP = 0.02
@@ -683,6 +745,10 @@ private enum class ControlFamily(val label: String) {
     OTHER("other"),
 }
 
+/** Whether saying a shape for this kind of control changes anything on screen. */
+private fun ControlKind.shapeMatters(): Boolean =
+    this != ControlKind.STICK && this != ControlKind.DPAD
+
 private fun ControlKind.family(): ControlFamily = when (this) {
     ControlKind.STICK, ControlKind.DPAD -> ControlFamily.DIRECTIONAL
     ControlKind.ANALOG_TRIGGER, ControlKind.DIGITAL_TRIGGER -> ControlFamily.TRIGGERS
@@ -742,11 +808,16 @@ private fun ControlMenu(
             KButton(onClick = { onStep(element.taller(-STEP, portrait)) }) { Text("shorter") }
         }
 
-        ShapeChoice(
-            current = element.effectiveShapeFor(portrait),
-            enabled = true,
-            onShape = onShape,
-        )
+        // A stick and a pad are drawn round whatever the document says, for reasons recorded in
+        // `ControlShape`. Offering the choice anyway was offering a control that does nothing, and
+        // the shipped layout has a `"shape": "square"` on a stick to prove somebody tried it.
+        if (element.kind.shapeMatters()) {
+            ShapeChoice(
+                current = element.effectiveShapeFor(portrait),
+                enabled = true,
+                onShape = onShape,
+            )
+        }
 
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -986,7 +1057,12 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
         AppSettings.update { it.copy(stickProfile = update(it.stickProfile)) }
         // The pad on screen is handed the new shaping straight away. Tuning a dead zone and then
         // having to put the controls up again to feel it is tuning by memory.
-        SessionState.profile = AppSettings.current.value.stickProfile
+        val updated = AppSettings.current.value.stickProfile
+        SessionState.profile = updated
+        // The overlay was handed a profile when it was built and never heard about a change, so
+        // every slider moved a number in a file and nothing in the hand. `update` exists precisely
+        // for this and was not being called.
+        SessionState.overlay?.update(updated)
     }
 
     Spacer(modifier = Modifier.height(2.dp))
@@ -1663,6 +1739,7 @@ private fun EditorCanvas(
         if (fitted.width <= 0f) return@Canvas
         drawScreen(fitted)
         drawGrid(fitted, gridUnit)
+        drawThirds(fitted)
 
         val placed = layout.elements.map { it.id to rectOf(fitted, it) }
         @Suppress("UNUSED_EXPRESSION") controlScale
@@ -1864,6 +1941,23 @@ private fun DrawScope.drawGrid(fit: Fit, gridUnit: Double) {
     while (y < fit.height) {
         drawLine(colour, Offset(fit.left, fit.top + y), Offset(fit.left + fit.width, fit.top + y), 1f)
         y += step
+    }
+}
+
+/**
+ * The screen in nine, drawn brighter than the grid.
+ *
+ * A layout is talked about in these terms — top-left, bottom-middle — and the fine grid is for
+ * placing a control rather than for saying where on the screen it is. Two lines each way is the
+ * whole of it: enough to read a position at a glance, few enough not to become another grid.
+ */
+private fun DrawScope.drawThirds(fit: Fit) {
+    val colour = Color(0xFF5A6472)
+    listOf(1f / 3f, 2f / 3f).forEach { at ->
+        val x = fit.left + fit.width * at
+        drawLine(colour, Offset(x, fit.top), Offset(x, fit.top + fit.height), 2f)
+        val y = fit.top + fit.height * at
+        drawLine(colour, Offset(fit.left, y), Offset(fit.left + fit.width, y), 2f)
     }
 }
 

@@ -61,15 +61,31 @@ public object DeviceSurface {
      * places them inside the insets. What is gained is that the bands are drawn, and a control that
      * strays into one is visibly straying into it instead of appearing to hang over an edge.
      */
-    public fun screen(context: Context): LayoutSurface {
+    public fun screen(context: Context): LayoutSurface = screen(context, cutoutCounts = true)
+
+    /**
+     * The whole screen, with a say in whether the camera cutout counts as taken.
+     *
+     * **It does not, for the band the editor shades.** Measured on the reference device and
+     * reported by the project owner: in landscape the cutout is a strip down one short edge, and a
+     * control there works — full screen or not — because nothing of the system's is drawn over it.
+     * The status bar and the gesture bar are different: they are the system's own windows, they sit
+     * above every overlay, and a touch landing on one never reaches Kestrel.
+     *
+     * Shading both as one band said "you cannot use this" about a strip that is perfectly usable.
+     */
+    public fun screen(context: Context, cutoutCounts: Boolean): LayoutSurface {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val manager = context.getSystemService(WindowManager::class.java)
             if (manager != null) {
                 val metrics = manager.currentWindowMetrics
-                val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+                val types = if (cutoutCounts) {
                     android.view.WindowInsets.Type.systemBars() or
                         android.view.WindowInsets.Type.displayCutout()
-                )
+                } else {
+                    android.view.WindowInsets.Type.systemBars()
+                }
+                val insets = metrics.windowInsets.getInsetsIgnoringVisibility(types)
                 val width = metrics.bounds.width().toDouble()
                 val height = metrics.bounds.height().toDouble()
                 if (width > 0 && height > 0) {

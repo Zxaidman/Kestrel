@@ -52,15 +52,15 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.33-dev`
+## State of the queue — build `0.0.34-dev`
 
 | Phase | Items |
 | --- | --- |
-| `done` | thirty-nine, including `CRIT-5` and `FEAT-15`. Every entry from `BUG-9`–`BUG-28` except `BUG-24` and `BUG-27`, and `FEAT-10`–`FEAT-29` except `FEAT-13` |
+| `done` | forty-eight — every `BUG` from 9 to 31, and `FEAT-10`–`FEAT-32` except `FEAT-13`, plus `CRIT-5`, `BUG-1` and `BUG-2` |
 | `superseded` | `FEAT-13` |
-| `testing` | `BUG-24`, `BUG-27`, `BUG-29`–`BUG-31`, `FEAT-31`, `FEAT-32`, `FEAT-34`, `FEAT-35` |
+| `testing` | `BUG-32`, `BUG-33`, `BUG-34`, `FEAT-36`, `FEAT-37` |
 | `building` | — |
-| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33` |
+| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42` |
 
 ---
 
@@ -554,7 +554,7 @@ then made visible, which costs a frame nobody can see instead of a frame everybo
 
 ### `BUG-24` — The close button in the menu is too small to hit
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.30-dev`.
 
 A `×` in a text button, which is a glyph with almost no target around it, in a menu opened by a
@@ -593,7 +593,7 @@ The toggle is repositioned with everything else.
 
 ### `BUG-27` — The close button is still too small
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with a screenshot, build `0.0.31-dev`.
 
 44dp is the platform's minimum, which is a floor rather than a size. In a menu opened by a thumb and
@@ -614,7 +614,7 @@ text lying over the pad it is describing. Above the buttons, and no wider than t
 
 ### `BUG-29` — Typing a number edited the wrong orientation
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.32-dev`. Dragging in portrait moved the portrait arrangement;
 typing in the values dialog moved the landscape one, from the same screen.
 
@@ -627,7 +627,7 @@ caught by one copy of a rule not being updated with the other.
 
 ### `BUG-30` — A control under the system bars cannot be touched while they are showing
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with screenshots, build `0.0.32-dev`. A control dragged into the band gets no
 touches.
 
@@ -642,6 +642,52 @@ specific to the bars being visible.
 So the editor **names it**: it counts the controls in the band and says, in the band's own caption,
 that the system takes those touches while the bars are showing. A caption that only said "the
 lighter band is the system bars" was a fact with no consequence attached to it.
+
+---
+
+### `BUG-32` — A shape offered for a control that ignores it
+
+**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"remove the shape from gamepad which doesn't support it."*
+
+A stick and a pad are drawn and pressed as circles whatever the document says, for a reason recorded
+in `ControlShape`. Offering the three shape buttons for them was offering a control that does
+nothing — and the layout the project owner sent has `"shape": "square"` on a stick and
+`"shape": "rectangle"` on the pad, which is what trying it looks like.
+
+The choice is not shown for those kinds.
+
+---
+
+### `BUG-33` — The camera cutout is not a band
+
+**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported with a screenshot, build `0.0.33-dev`. *"in landscape mode the left bar is not
+system band it is the camera notch area which is useable whether on fullscreen or not."*
+
+Correct, and the distinction matters. The status bar and the gesture bar are the system's **own
+windows**: they sit above every overlay and take the touches that land on them. A display cutout is
+not a window — it is a hole in the panel with nothing drawn over it, and a control placed beside it
+works whether the phone is full screen or not.
+
+Shading both as one band said "you cannot use this" about a strip that is perfectly usable, and put
+seven controls into a warning that did not apply to them.
+
+The band is the system bars alone.
+
+---
+
+### `BUG-34` — Dead zone, curve and sensitivity changed nothing you could feel
+
+**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.33-dev`. *"how can I feel it immediately… while control joystick
+works the same."*
+
+The overlay is handed an analog profile when it is built and keeps it. `ControllerOverlay.update`
+exists to replace it and **was never called** — so every slider moved a number in a file and nothing
+in the hand, and the only way to feel a change was to put the controls up again.
+
+It is called now, on every change.
 
 ---
 
@@ -1149,7 +1195,7 @@ and adding one is a licence question to answer at the time rather than in advanc
 
 ### `FEAT-30` — The toggle is part of the layout
 
-**Phase:** `pending` — next, with `FEAT-33`.
+**Phase:** `pending` — next.
 **Asked for:** *"make K button editable both editor and json and customisable theme like rest of
 gamepad. use gamepad icon."*
 
@@ -1171,7 +1217,7 @@ puts it off the screen is a layout the editor refuses rather than warns about.
 
 ### `FEAT-31` — A shape belongs to an orientation too
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"move the shape to portrait also, because it is customisable."*
 
 Right, and it corrects the line drawn in `FEAT-15`. Shape went with identity on the grounds that
@@ -1186,7 +1232,7 @@ different control.
 
 ### `FEAT-32` — A way back for a control that has left the screen
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"add one more floating button on which only appears if gamepad is out of bound to
 resets only his position to default placement without effecting size and shape etc."*
 
@@ -1202,7 +1248,7 @@ is on the screen — `BuiltInLayoutsTest` checks exactly that, at every size, in
 
 ### `FEAT-33` — A font for the application, including one somebody brings
 
-**Phase:** `pending` — held for its own round; the custom-font half is a storage job, not a font job.
+**Phase:** `pending` — queued; the custom-font half is a storage job, not a font job.
 **Asked for:** *"Add option for app font style… System default… few Games related font which are
 available on google font or any free license font… And lastly user custom font file from file
 picker (.tff and any support one)."*
@@ -1225,7 +1271,7 @@ properly rather than alongside eight other things.
 
 ### `FEAT-34` — The menu fits, and one button does one thing
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with screenshots, build `0.0.32-dev`.
 
 `size` and `⋮ values` opened the same dialog, which is two buttons for one action and a third of the
@@ -1240,7 +1286,7 @@ full-width that does not need to be.
 
 ### `FEAT-35` — The pad's own settings live where the pad is
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"Control size and deadzone, curve, sensitivity and invert x and y should live inside
 the editor setting menu."*
 
@@ -1256,7 +1302,7 @@ which it does not.
 
 ### `BUG-31` — The menu header and close button were never actually changed
 
-**Phase:** `testing` — built in `0.0.33-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with screenshots, build `0.0.32-dev`, after being reported as done.
 
 `FEAT-28` wrote a `MenuHeader` with a large bold title and a 56dp icon button. The window menu got
@@ -1266,6 +1312,104 @@ they were while the changelog said otherwise.
 
 **Do:** when an edit replaces existing text, check the text is gone afterwards. A search-and-replace
 that finds nothing is not a no-op, it is a silent failure to do the work.
+
+---
+
+### `FEAT-36` — The buttons are one block, and it gets out of the way
+
+**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for, as the answer to `BUG-30`:** *"Make floating btn and notes as one window then put it
+only within center-mid without overflow… then the user can hold and drag it across the screen. When
+the user long presses it, give it an option to hide it, and the window will turn as a halftone
+overlay which does not accept touch until the user selects the gamepad button."*
+
+The buttons and their captions are one block now. It starts in the middle, which is the one place a
+pad never is — right up until a control is dragged there, and then it sits on top of the thing being
+edited with no way to move either. So it can be **dragged anywhere**, and long-pressed to **hide**:
+faded to a fifth and taking no touches at all, so the pad underneath can be worked on through it.
+
+**Touching any control brings it back.** A hidden panel recoverable only from a menu inside itself
+would be a way to lose Save and Exit.
+
+---
+
+### `FEAT-37` — The screen in nine
+
+**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"We have divided the whole screen into 9 parts. Give bold light color to the grid
+line across the screen to show it."*
+
+Two brighter lines each way. A layout is talked about in those terms — top-left, bottom-middle —
+and the fine grid is for placing a control rather than for saying where on the screen it is.
+
+---
+
+### `FEAT-38` — Opacity, for the pad and for one control
+
+**Phase:** `pending`
+**Asked for:** *"Whole Gamepad opacity. Per buttons also."*
+
+A pad is drawn over somebody else's application, so how much of it shows through is the setting that
+decides whether the game or the pad is easier to see. Two levels: one for the pad, and a per-control
+override for the few that want to be fainter than the rest.
+
+Schema: a nullable `opacity` on an element, and a setting for the whole. Both need a floor — a
+control at zero is a control that cannot be found, and a pad nobody can see is a phone that has
+stopped responding for reasons its owner cannot guess.
+
+---
+
+### `FEAT-39` — Turning a control off
+
+**Phase:** `pending`
+**Asked for:** *"Ability to toggle on or off specific buttons."*
+
+A control that is off is not drawn, takes no touches and sends nothing — but stays in the document
+with its position, so turning it back on returns it where it was rather than to a default.
+
+**Not the same as deleting it**, and the difference is the point: somebody playing a game with no
+triggers wants them gone for that game, not gone.
+
+---
+
+### `FEAT-40` — Layout profiles: platform, then variant
+
+**Phase:** `pending`
+**Asked for:** two drop-downs — **Xbox / PlayStation / Switch**, and for each, **default** plus every
+copy the user has made.
+
+The schema already has most of this: layouts are documents with stable ids, `builtin.<platform>.<x>`
+and `user.<uuid>`, and `docs/CONTROLLER_FAMILIES.md` says where a family belongs. What is missing is
+two shipped layouts and a screen to choose from.
+
+**What must not be quietly assumed:** the three families differ in **labels and positions**, not in
+what they send. A PlayStation pad's cross is the same control as an Xbox pad's `A`, and the file
+already says so — `binds` is the control, the label is presentation. A layout that changed the
+binding to change the family would be a layout that breaks every target application.
+
+---
+
+### `FEAT-41` — Import and export a layout
+
+**Phase:** `pending`
+**Asked for:** *"Import and Export Layout Profile."*
+
+Export is nearly free — the document is already a file the user owns. Import is the half with the
+work in it: `docs/CONFIGURATION_SCHEMA.md` requires every field validated, an id that does not
+collide silently, unknown fields preserved, and a typed error rather than a crash for anything
+malformed. A layout arriving from someone else is untrusted input.
+
+---
+
+### `FEAT-42` — Keyboard and mouse
+
+**Phase:** `pending` — a feasibility experiment before any design, like Phase 0.
+
+**Asked for as an experiment, and it must stay one.** Everything Kestrel knows about delivering
+input was established by measurement, and none of it was about a keyboard or a mouse: whether a
+virtual keyboard device reaches a target the way a virtual pad does is an open question, not a
+smaller version of a solved one. It gets a Phase-0-style feasibility test of its own before any of
+it is designed.
 
 ---
 
@@ -1585,6 +1729,44 @@ show the rectangle and its share of the screen rather than only the `group` name
 - **Shape is per orientation** → `FEAT-31`, correcting where `FEAT-15` drew the line.
 - **The pad's own settings move into the editor** → `FEAT-35`.
 - **Fonts get their own round** → `FEAT-33`.
+
+
+
+### Round `0.0.33-dev` — the arrangement is right, the feel was not
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–5 | Typing edits the orientation on screen, shape per orientation | **Working.** Shape should not be offered where it does nothing → `BUG-32` |
+| 6 | Menu fits | **Working**; landscape could be wider |
+| 7–11 | Header, close button, stray button | **Working.** A new default layout supplied → see below |
+| 12, 13 | The band | Behaves as described, and the diagnosis was wrong: the trouble is dragging a control **out** of the band, and the landscape cutout strip is not a band at all → `BUG-33`, `FEAT-36`, `FEAT-37` |
+| 14–16 | Pad settings in the editor | Present and saved, but **nothing could be felt** → `BUG-34` |
+
+### The supplied default, and why it is not shipped as one
+
+The project owner sent `user.xbox.json` and two screenshots as the new built-in. It was taken
+apart and checked against the rules the shipped layout has to keep, and it **fails one of them**:
+
+- `stick.right.press` overlaps `menu.start` — 87px apart where 110px is touching, at the default
+  size.
+- `dpad` overlaps `menu.select` and `shoulder.l2` above **89%** — the left column has the pad,
+  `L3`, `L1`, `Select` and `L2` in one strip, and at 100% there is not room for them.
+
+It is a fine layout **at the size it was arranged at**, and the default is 85%, which is why nothing
+looks wrong. `MAX_CONTROL_SCALE` is 1.00, so a user who drags the size slider up gets a pad with its
+d-pad under the Select button — which is exactly the fault `BuiltInLayoutsTest` exists to catch, and
+it caught it.
+
+**It is on the device as `user.xbox` and nothing about it has been touched.** What is not done is
+promoting it to the layout everybody gets. Three ways forward, and the choice is the project
+owner's:
+
+1. **Adjust three controls** — `R3` beside the right stick rather than above it, and the two
+   triggers 0.08 further in. Smallest change; the arrangement stays recognisably theirs.
+2. **Lower `MAX_CONTROL_SCALE` to 0.85** and ship the arrangement exactly as sent. Honest, and it
+   takes the size headroom away from everyone.
+3. **Leave the built-in as it is.** The supplied arrangement stays a personal layout, which is what
+   the built-in → duplicate → edit workflow is for.
 
 
 ### Awaiting

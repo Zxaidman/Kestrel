@@ -451,94 +451,147 @@ actually been changed.
 
 ---
 
-## Built, awaiting confirmation — `0.0.33-dev`
-
-### `BUG-29` — Typing edits the orientation on screen
+### `BUG-29` — Typing edits the orientation on screen — **closed `0.0.33-dev`**
 
 The values dialog read and wrote `placement` while everything else had moved to
 `placementFor(portrait)`, so dragging in portrait moved the portrait arrangement and typing moved
-the landscape one — from the same screen. It now reads, validates and writes through the same
-orientation-aware pair as every other edit. Unverified on the device.
+the landscape one, from the same screen. **Measured** in both orientations.
 
-**Second time this shape of fault has happened here.** The first was the editor and the overlay
-drawing at different sizes. Both were one copy of a rule not being updated with the other, and both
-were found by the project owner rather than by a test.
+**Second fault of this shape here**, after the editor and the overlay drawing at different sizes.
+Both were one copy of a rule not updated with the other, and the project owner found both.
 
 ---
 
-### `BUG-31` — The header and close button are actually applied now
+### `BUG-31` + `BUG-24` + `BUG-27` — The header and close button, actually shipped — **closed `0.0.33-dev`**
 
-`FEAT-28`'s header reached the window menu and not the control menu: the edit that was supposed to
-replace it matched nothing, changed nothing, reported nothing, and the old small text and small `×`
-stayed while the changelog said otherwise.
+A large bold accent title and a 56dp icon button. They had been written once, reached the window
+menu, and never reached the control menu, because the edit meant to replace it matched nothing and
+reported nothing. **Measured** this time.
 
-**Do:** when an edit replaces existing text, check the old text is gone afterwards. A
-search-and-replace that finds nothing is not a no-op — it is a silent failure to do the work.
+**Do:** when an edit replaces existing text, check the old text is gone. A search-and-replace that
+finds nothing is a silent failure, not a no-op.
+
+---
+
+### `FEAT-31` — A shape belongs to an orientation — **closed `0.0.33-dev`**
+
+An optional `shape` inside the `portrait` block. Kind, binding and group still cannot differ.
+**Measured.** It corrected where `FEAT-15` drew the line between identity and presentation.
+
+---
+
+### `FEAT-32` — A way back for a stray control — **closed `0.0.33-dev`**
+
+A floating button that exists only while something is off the screen and restores **position only**
+from the shipped layout. **Measured.**
+
+---
+
+### `FEAT-34` — The menu fits — **closed `0.0.33-dev`**
+
+One `values` button sharing a row with the anchor, steppers wrapped, nothing full-width without
+reason. `copy` is reachable in both orientations. **Measured.**
+
+---
+
+### `FEAT-35` — The pad's settings live where the pad is — **closed `0.0.33-dev`**
+
+Size, dead zone, curve, sensitivity and both inversions in the editor's settings sheet. **Measured**
+as present and saved — and they did nothing that could be felt, because the overlay was never told.
+That is `BUG-34`, and it means this feature was reported working while half of it was not.
+
+---
+
+### `BUG-30` — The band says what it costs — **closed `0.0.33-dev`**
+
+The caption names the consequence rather than the band. **Measured.**
+
+**The diagnosis was wrong, though the fix was right.** The trouble is not being told; it is that a
+control dragged into the band is hard to drag back out, because the touches to drag it with are the
+touches the system takes. And the strip shaded in landscape was the camera cutout, which is not a
+system window and is perfectly usable. Those are `BUG-33`, `FEAT-36` and `FEAT-37`.
+
+---
+
+---
+
+## Built, awaiting confirmation — `0.0.34-dev`
+
+### `BUG-34` — The sliders reach the pad in your hand
+
+`ControllerOverlay.update(profile)` exists to replace the analog shaping on a pad already on screen,
+and nothing ever called it. Every dead zone, curve, sensitivity and inversion change wrote a number
+to a file and left the pad exactly as it was; the only way to feel one was to put the controls up
+again, which is why they felt identical.
+
+**A feature can be built, saved, tested and reported working while the half that matters is not
+connected.** The settings were there, the file was right, and the hand felt nothing.
 
 Unverified on the device.
 
 ---
 
-### `FEAT-34` — The menu fits, and one button does one thing
+### `BUG-33` — The cutout is not a band
 
-`size` and `⋮ values` opened the same dialog: two buttons for one action, and a third of the menu's
-height spent saying so. With everything else on a full-width row the menu was taller than a portrait
-screen and `copy` was off the bottom of it. Now: one `values` button sharing its row with the anchor,
-the steppers on one wrapping row, and nothing full-width that does not need to be. Unverified.
+The status bar and the gesture bar are the system's own windows: they are drawn above every overlay
+and they take the touches that land on them. A display cutout is not a window — it is a hole in the
+panel with nothing over it, and a control beside it works whether the phone is full screen or not.
 
----
+Shading both as one band said "you cannot use this" about a strip that is usable, and swept seven
+controls into a warning that did not apply to them. The band is the system bars alone now.
 
-### `FEAT-31` — A shape belongs to an orientation
-
-An optional `shape` inside the `portrait` block, `null` meaning "the same as landscape". Kind,
-binding and group still cannot differ between orientations — those are the fields that would make a
-control a different control.
-
-Three unit tests, including the one that caught a real fault while it was being written: the writer
-emits every field including the unset ones, so an explicit `"shape": null` had to be read as *absent*
-rather than as a missing required value. Unverified on the device.
+Unverified on the device.
 
 ---
 
-### `FEAT-32` — A way back for a stray control
+### `BUG-32` — No shape where a shape does nothing
 
-A fifth floating button, present only while something is off the screen, that puts those controls
-back where the shipped layout has them. **Position only** — not size, not shape, not the window they
-are in. The built-in is the source because it is the only arrangement Kestrel can be sure fits: its
-tests check that at every size in both orientations. Unverified.
+A stick and a pad are drawn and pressed as circles whatever the document says. The choice is not
+offered for them — the layout the project owner sent has `"shape": "square"` on a stick, which is
+what offering it looks like from the other end.
 
----
-
-### `FEAT-35` — The pad's settings live where the pad is
-
-Size, dead zone, curve, sensitivity and both inversions moved into the editor's settings sheet. They
-were on the diagnostics screen, which is the one place they cannot be judged — nothing is being
-played there and the pad is not on screen. Size is per orientation; the shaping is not, because a
-dead zone is a matter of the hardware and the hand rather than of which way the phone is held.
 Unverified.
 
 ---
 
-### `BUG-30` — The band says what it costs
+### `FEAT-36` — The buttons are one block that moves and hides
 
-A control under the system bars gets no touches while those bars are showing, and **this cannot be
-fixed**: the status bar and the gesture bar are the system's own windows, they sit above every
-application overlay, and a touch that lands on one is never offered to Kestrel.
+Dragged anywhere; long-pressed for **Hide** or **Back to the middle**. Hidden, the block fades to a
+fifth and takes **no touches at all**, so the pad underneath can be dragged through it — which is
+the real answer to a control stuck in a corner behind the panel.
 
-What is true and useful is that a game is nearly always full screen, and then the bars are not there
-and the control works normally. So the editor counts the controls in the band and says what happens
-to them when the bars appear. A caption that only said "this is where the system bars are" was a fact
-with no consequence attached.
+**Touching any control brings it back.** A hidden panel recoverable only from a menu inside itself
+would be a way to lose Save and Exit.
 
-Unverified on the device — the count and the wording, not the platform behaviour, which is not in
-doubt.
+Unverified on the device.
 
 ---
 
-### `BUG-24` + `BUG-27` — carried
+### `FEAT-37` — The screen in nine
 
-The close button was rebuilt at 56dp with a real icon and then did not ship, which is `BUG-31`. These
-close when that is seen working.
+Two brighter lines each way, over the fine grid. A layout is talked about in those terms — top-left,
+bottom-middle — and the fine grid is for placing a control rather than saying where it is.
+Unverified.
+
+---
+
+### The supplied layout is not the built-in, and here is exactly why
+
+`user.xbox.json` and two screenshots were sent as the new default. It was checked against the rules
+the shipped layout keeps, and it fails one:
+
+- `stick.right.press` and `menu.start`: 87px apart, 110px is touching — **at the default size**.
+- `dpad` against `menu.select` and `shoulder.l2`: clean to **89%** and overlapping above it. The
+  left column holds the pad, `L3`, `L1`, `Select` and `L2` in one strip and there is not room for
+  them at 100%.
+
+`MAX_CONTROL_SCALE` is 1.00, so a user who drags the size slider up gets a pad with its d-pad under
+the Select button. That is the fault `BuiltInLayoutsTest` was written to catch, and it caught it —
+the arrangement is right at the size it was arranged at, which is 85%, and wrong above 89%.
+
+**Nothing about the project owner's own layout was touched.** It is on the device as `user.xbox` and
+works. What was not done is promoting it to the layout everybody gets, and three ways forward are in
+`todo-list.md` for the project owner to choose between.
 
 ---
 
