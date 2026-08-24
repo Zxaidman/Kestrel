@@ -82,11 +82,51 @@ class KestrelSettingsTest {
     fun `a field that is present and wrong is reported rather than ignored`() {
         val outcome = parse(
             """{"schemaVersion":1,"type":"settings","id":"user.settings","name":"S",
-               "controlScale": 40}"""
+               "scaleScheme": 2, "controlScale": 40}"""
         )
         val error = error(outcome)
         assertTrue(error is ConfigurationError.OutOfRange, "got $error")
         assertEquals(KestrelSettings.MAX_CONTROL_SCALE, (error as ConfigurationError.OutOfRange).max)
+    }
+
+    @Test
+    fun `a size written by an older build is judged by the limit it was written under`() {
+        // The message a user sees has to name the limit that applied to what they typed. A file
+        // from before the scheme changed says 0.40 is allowed, and telling its author that the
+        // minimum is 0.50 would be telling them about a rule their file predates.
+        val error = error(
+            parse(
+                """{"schemaVersion":1,"type":"settings","id":"user.settings","name":"S",
+                   "controlScale": 40}"""
+            )
+        )
+        assertTrue(error is ConfigurationError.OutOfRange, "got $error")
+        assertEquals(1.0, (error as ConfigurationError.OutOfRange).max)
+    }
+
+    @Test
+    fun `a size written by an older build means the same size after the scheme changed`() {
+        // 0.80 was the size the project owner settled on, and 100% is defined as that size. A file
+        // holding 0.80 must come back as 1.00, or upgrading silently shrinks somebody's pad.
+        val settings = value(
+            parse(
+                """{"schemaVersion":1,"type":"settings","id":"user.settings","name":"S",
+                   "controlScale": 0.80, "controlScalePortrait": 0.40}"""
+            )
+        )
+        assertEquals(1.00, settings.controlScale, 1e-9)
+        assertEquals(0.50, settings.controlScalePortrait, 1e-9)
+    }
+
+    @Test
+    fun `a size written in the current scheme is left alone`() {
+        val settings = value(
+            parse(
+                """{"schemaVersion":1,"type":"settings","id":"user.settings","name":"S",
+                   "scaleScheme": 2, "controlScale": 1.60}"""
+            )
+        )
+        assertEquals(1.60, settings.controlScale, 1e-9)
     }
 
     @Test

@@ -92,6 +92,7 @@ import io.github.zxaidman.kestrel.core.layout.resolve
 import io.github.zxaidman.kestrel.core.layout.scaledBy
 import io.github.zxaidman.kestrel.core.layout.shapedAs
 import io.github.zxaidman.kestrel.core.settings.EditorPreferences
+import io.github.zxaidman.kestrel.core.settings.IdlePreferences
 import io.github.zxaidman.kestrel.core.settings.KestrelSettings
 import io.github.zxaidman.kestrel.platform.display.DeviceSurface
 import io.github.zxaidman.kestrel.platform.session.SessionState
@@ -187,6 +188,7 @@ public fun LayoutEditorScreen(
     // control is dragged there, and then it is on top of the thing being edited with no way to move
     // either of them.
     var panel by remember { mutableStateOf(Offset.Zero) }
+    var panelSize by remember { mutableStateOf(IntSize.Zero) }
     var panelHidden by remember { mutableStateOf(false) }
     var panelMenu by remember { mutableStateOf(false) }
 
@@ -243,6 +245,7 @@ public fun LayoutEditorScreen(
             modifier = Modifier
                 .align(Alignment.Center)
                 .offset { IntOffset(panel.x.roundToInt(), panel.y.roundToInt()) }
+                .onSizeChanged { panelSize = it }
                 .graphicsLayer { alpha = if (panelHidden) HIDDEN_PANEL_ALPHA else 1f }
                 .then(
                     // A hidden panel is a picture, not a thing: it takes no touches at all, so the
@@ -250,10 +253,18 @@ public fun LayoutEditorScreen(
                     if (panelHidden) {
                         Modifier
                     } else {
-                        Modifier.pointerInput(Unit) {
+                        Modifier.pointerInput(rootSize, panelSize) {
                             detectDragGestures { change, dragged ->
                                 change.consume()
-                                panel += dragged
+                                // Kept on the screen. It is centred, so its travel each way is half
+                                // the screen less half of itself — drag it off the edge and Save and
+                                // Exit go with it.
+                                val limitX = max(0f, (rootSize.width - panelSize.width) / 2f)
+                                val limitY = max(0f, (rootSize.height - panelSize.height) / 2f)
+                                panel = Offset(
+                                    (panel.x + dragged.x).coerceIn(-limitX, limitX),
+                                    (panel.y + dragged.y).coerceIn(-limitY, limitY),
+                                )
                             }
                         }.pointerInput(Unit) {
                             detectTapGestures(onLongPress = { panelMenu = true })
@@ -399,6 +410,7 @@ public fun LayoutEditorScreen(
         } else if (menuElement != null && !toolsOpen) {
             ControlMenu(
                 element = menuElement,
+                device = device,
                 landscape = !portrait,
                 copied = copied,
                 onSize = {
@@ -766,6 +778,7 @@ private fun ControlKind.family(): ControlFamily = when (this) {
 @Composable
 private fun ControlMenu(
     element: LayoutElement,
+    device: LayoutSurface,
     landscape: Boolean,
     copied: ControlStyle?,
     onSize: () -> Unit,
@@ -789,7 +802,7 @@ private fun ControlMenu(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             KButton(onClick = onSize, modifier = Modifier.weight(1f)) { Text("values") }
             KOutlinedButton(
-                onClick = { onStep(element.withNextAnchor(portrait)) },
+                onClick = { onStep(element.withNextAnchor(portrait, device)) },
                 modifier = Modifier.weight(1f),
             ) { Text(element.placementFor(portrait).anchor.wireName) }
         }
@@ -870,7 +883,7 @@ private fun MenuAt(
         Surface(
             modifier = Modifier
                 .then(
-                    if (landscape) Modifier.width(MENU_WIDTH.dp) else Modifier.fillMaxWidth(0.92f)
+                    if (landscape) Modifier.width(MENU_WIDTH.dp) else Modifier.fillMaxWidth(0.94f)
                 )
                 .clickable(enabled = false, onClick = {}),
             tonalElevation = 8.dp,
@@ -1088,6 +1101,42 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
         onValueChangeFinished = onPersist,
         valueRange = KestrelSettings.MIN_CONTROL_SCALE.toFloat()
             ..KestrelSettings.MAX_CONTROL_SCALE.toFloat(),
+    )
+
+    Spacer(modifier = Modifier.height(2.dp))
+    Text("Getting out of the way", style = MaterialTheme.typography.labelLarge)
+    val idle = settings.idle
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Switch(
+            checked = idle.enabled,
+            onCheckedChange = { on ->
+                AppSettings.update { it.copy(idle = it.idle.copy(enabled = on)) }
+                onPersist()
+            },
+        )
+        Text("Fade when untouched", style = MaterialTheme.typography.bodyMedium)
+    }
+    Text(
+        text = "after %d s".format(idle.seconds),
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
+    )
+    Slider(
+        enabled = idle.enabled,
+        value = idle.seconds.toFloat(),
+        onValueChange = { v ->
+            AppSettings.update { it.copy(idle = it.idle.copy(seconds = v.roundToInt())) }
+        },
+        onValueChangeFinished = onPersist,
+        valueRange = IdlePreferences.MIN_SECONDS.toFloat()..IdlePreferences.MAX_SECONDS.toFloat(),
+    )
+    Text(
+        text = "The controls dim after that long untouched and go after it again. The K button " +
+            "only ever dims — it is the way out, and a way out that hides itself is not one.",
+        style = MaterialTheme.typography.bodySmall,
     )
 
     Spacer(modifier = Modifier.height(2.dp))
@@ -1445,7 +1494,20 @@ private fun LayoutElement.taller(delta: Double, portrait: Boolean): LayoutElemen
     }
 
 
-private fun LayoutElement.withNextAnchor(portrait: Boolean): LayoutElement {
+/**
+ * Moves to the next anchor **without moving the control**.
+ *
+ * Asked for by name in the project owner's proposal: *"If a user changes a button's anchor … the
+ * button stays in the exact same spot on the screen without jumping."* It did jump — the anchor
+ * changed and the offsets were kept, so a control pinned bottom-left with 0.2 and 0.2 became a
+ * control pinned top-right with 0.2 and 0.2, which is the opposite corner.
+ *
+ * The position is preserved **in the document's own terms**, at full size, rather than at whatever
+ * the size setting happens to be. An offset scales and an anchor does not, so "the same spot" is a
+ * different pair of numbers at every size; the document is the thing being edited, and at the
+ * default size — which is now full size — the two answers are the same one.
+ */
+private fun LayoutElement.withNextAnchor(portrait: Boolean, surface: LayoutSurface): LayoutElement {
     // Only the corners and edges a control is ever pinned to. The centre is excluded on purpose:
     // a control anchored to the middle of the screen is one no thumb can reach while holding a
     // phone, and offering it here would be offering a mistake.
@@ -1455,7 +1517,11 @@ private fun LayoutElement.withNextAnchor(portrait: Boolean): LayoutElement {
     )
     val current = placementFor(portrait)
     val next = order[(order.indexOf(current.anchor).coerceAtLeast(0) + 1) % order.size]
-    return withPlacementFor(portrait, current.copy(anchor = next))
+    val here = current.resolve(surface)
+    return withPlacementFor(
+        portrait,
+        current.copy(anchor = next).centeredAt(surface, here.centerX, here.centerY).rounded(),
+    )
 }
 
 /**
@@ -1739,7 +1805,7 @@ private fun EditorCanvas(
         if (fitted.width <= 0f) return@Canvas
         drawScreen(fitted)
         drawGrid(fitted, gridUnit)
-        drawThirds(fitted)
+        drawThirds(fitted, gridUnit)
 
         val placed = layout.elements.map { it.id to rectOf(fitted, it) }
         @Suppress("UNUSED_EXPRESSION") controlScale
@@ -1761,6 +1827,11 @@ private fun EditorCanvas(
             if (index >= 0) {
                 drawControl(fitted, layout.elements[index], livePortrait, placed[index].second, true)
             }
+        }
+        // The anchor a selected control is measured from. An offset is a distance from a point, and
+        // until now that point was named in words and shown nowhere.
+        layout.element(selectedId ?: "")?.let { chosen ->
+            drawAnchor(fitted, chosen.placementFor(livePortrait).anchor)
         }
         guides.forEach { guide -> drawGuide(fitted, guide) }
     }
@@ -1951,14 +2022,31 @@ private fun DrawScope.drawGrid(fit: Fit, gridUnit: Double) {
  * placing a control rather than for saying where on the screen it is. Two lines each way is the
  * whole of it: enough to read a position at a glance, few enough not to become another grid.
  */
-private fun DrawScope.drawThirds(fit: Fit) {
+private fun DrawScope.drawThirds(fit: Fit, gridUnit: Double) {
     val colour = Color(0xFF5A6472)
+    val step = (gridUnit * fit.surface.shortSide).toFloat()
+
+    // Snapped to the nearest grid line rather than drawn wherever a third falls. Two sets of lines
+    // that nearly line up read as a mistake — and a third of a screen is not a measurement anybody
+    // needs to the pixel, while "is this control on a line" is a question asked constantly.
+    fun snap(value: Float): Float =
+        if (step <= 1f) value else Math.round(value / step) * step
+
     listOf(1f / 3f, 2f / 3f).forEach { at ->
-        val x = fit.left + fit.width * at
+        val x = fit.left + snap(fit.width * at)
         drawLine(colour, Offset(x, fit.top), Offset(x, fit.top + fit.height), 2f)
-        val y = fit.top + fit.height * at
+        val y = fit.top + snap(fit.height * at)
         drawLine(colour, Offset(fit.left, y), Offset(fit.left + fit.width, y), 2f)
     }
+}
+
+/** Where the selected control's offsets are measured from, as a dot you can see. */
+private fun DrawScope.drawAnchor(fit: Fit, anchor: Anchor) {
+    val x = fit.left + fit.width * anchor.originX.toFloat()
+    val y = fit.top + fit.height * anchor.originY.toFloat()
+    val red = Color(0xFFE03A3A)
+    drawCircle(red, radius = 9f, center = Offset(x, y))
+    drawCircle(Color(0xFF0B0D11), radius = 9f, center = Offset(x, y), style = Stroke(width = 2f))
 }
 
 private fun DrawScope.drawGuide(fit: Fit, guide: Guide) {

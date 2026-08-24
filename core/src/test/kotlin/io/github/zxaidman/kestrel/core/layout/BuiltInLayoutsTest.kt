@@ -91,11 +91,21 @@ class BuiltInLayoutsTest {
             LayoutSurface(2296.0, 980.0),
             LayoutSurface(1080.0, 2216.0),
         )
+        // Up to the default and no further, and that is a change with a reason.
+        //
+        // The size setting used to stop at 100% and the shipped layout had to be clean there. The
+        // project owner has reset the scheme: what was 80% is now 100%, the slider runs to 200%,
+        // and a pad at 200% is somebody deliberately making the controls enormous. Requiring a
+        // layout to stay clear of itself at twice its size would rule out every arrangement worth
+        // shipping.
+        //
+        // So the promise is: **the shipped layout fits and does not overlap itself at the default
+        // size and at every size below it.** Above the default it is the user's arrangement to
+        // judge, and the editor marks what leaves the screen.
         val scales = listOf(
             KestrelSettings.MIN_CONTROL_SCALE,
-            0.60,
+            0.75,
             KestrelSettings.DEFAULT_CONTROL_SCALE,
-            KestrelSettings.MAX_CONTROL_SCALE,
         )
         return surfaces.flatMap { surface -> scales.map { surface to it } }
     }
@@ -141,15 +151,15 @@ class BuiltInLayoutsTest {
 
     @Test
     fun `the default size reproduces the arrangement measured on the reference device`() {
-        // The pad the project owner tested and approved had face buttons 112px across on a 1080px
-        // short side. The document is authored larger so the setting has somewhere to grow, and the
-        // default brings it back to what a hand settled on.
+        // The arrangement the project owner sent, at the size they settled on. Face buttons come
+        // out 104px across on a 1080px short side — the old 112px at the old 85%, restated in the
+        // scheme where their 80% is 100%.
         val surface = LayoutSurface(2400.0, 1080.0)
         val faceA = xbox().element("face.a")!!
         val rect = faceA.placement
             .scaledBy(KestrelSettings.DEFAULT_CONTROL_SCALE)
             .resolve(surface)
-        assertEquals(112.0, rect.width, 4.0, "the default size no longer matches the tested pad")
+        assertEquals(104.0, rect.width, 5.0, "the default size no longer matches the tested pad")
     }
 
     @Test

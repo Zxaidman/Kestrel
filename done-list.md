@@ -515,83 +515,93 @@ system window and is perfectly usable. Those are `BUG-33`, `FEAT-36` and `FEAT-3
 
 ---
 
-## Built, awaiting confirmation — `0.0.34-dev`
+### `BUG-33` — The cutout is not a band — **closed `0.0.34-dev`**
 
-### `BUG-34` — The sliders reach the pad in your hand
+The band is the system bars alone. A cutout is a hole in the panel with no window over it, so a
+control beside it works whether the phone is full screen or not. **Measured.**
 
-`ControllerOverlay.update(profile)` exists to replace the analog shaping on a pad already on screen,
-and nothing ever called it. Every dead zone, curve, sensitivity and inversion change wrote a number
-to a file and left the pad exactly as it was; the only way to feel one was to put the controls up
-again, which is why they felt identical.
+---
 
-**A feature can be built, saved, tested and reported working while the half that matters is not
-connected.** The settings were there, the file was right, and the hand felt nothing.
+### `FEAT-36` — The buttons are one block that moves and hides — **closed `0.0.34-dev`**
+
+Dragged, long-pressed for Hide or Back to the middle, faded to a fifth and taking no touches while
+hidden so the pad can be worked on through it. **Measured** — and it shipped with no clamping, so
+it could be dragged off the screen, which is `BUG-35`.
+
+---
+
+---
+
+## Built, awaiting confirmation — `0.0.35-dev`
+
+### `CRIT-6` — 100% is what 80% was, and the default is the project owner's layout
+
+The arrangement sent two rounds ago could not ship as a default because it overlapped itself above
+89% while the size slider ran to 100%. Rather than move the layout, the project owner moved the
+scale: **what was 80% is 100%, and the range is 50% to 200%.**
+
+Every number in the shipped layout is multiplied by 0.80 and the arrangement is theirs, from the
+file they sent — both orientations, with the shapes stripped from the stick and the pad, which
+ignore them.
+
+**What the shipped layout now promises**, and it is a smaller promise than before: *no overlap and
+nothing off the screen at the default size and at every size below it.* At 200% a pad is being
+deliberately enlarged and what it runs into is the user's business. Requiring a layout to stay clear
+of itself at twice its size would rule out every arrangement worth shipping.
+
+**Old settings files are converted.** They hold sizes in the old scheme, and reading an old `0.80`
+as a new `0.80` would shrink somebody's pad by a fifth without saying so. The file carries a
+`scaleScheme` marker; a file without one is old by definition, is validated against the range it was
+written under — so its author is told about the limit that applied to them — and then converted.
+Four unit tests cover it, including that an old `0.80` comes back as `1.00`.
+
+**How it is known.** The layout passes every rule the shipped one has to keep, at 50%, 75% and 100%.
+Unverified on a device.
+
+---
+
+### `BUG-37` — The pad's stick shows what is being sent
+
+`BUG-34` was right and incomplete. The shaping did start reaching the game — the project owner
+confirmed it in play — and the **picture** did not change, because the pad drew its knob under the
+thumb and sent the shaped value. So the one place somebody looks while tuning a dead zone was the
+one place the dead zone never appeared, while the diagnostics screen's own stick showed it plainly.
+
+**Two renderers of the same thing disagreeing. Third time.** The knob now draws the shaped value: a
+knob that does not leave the centre until the dead zone is passed *is* the dead zone, visible.
 
 Unverified on the device.
 
 ---
 
-### `BUG-33` — The cutout is not a band
+### `FEAT-44` — The pad gets out of the way on its own
 
-The status bar and the gesture bar are the system's own windows: they are drawn above every overlay
-and they take the touches that land on them. A display cutout is not a window — it is a hole in the
-panel with nothing over it, and a control beside it works whether the phone is full screen or not.
+Untouched for the set interval, the controls dim; for it again, they go, and the toggle brings them
+back. A switch turns it off and a slider sets the interval from 2s to 120s. Everything is released
+on the way out, which is the same path `hideControls` has always taken — a control that vanishes
+mid-press leaves nothing behind able to let go of it.
 
-Shading both as one band said "you cannot use this" about a strip that is usable, and swept seven
-controls into a warning that did not apply to them. The band is the system bars alone now.
-
-Unverified on the device.
-
----
-
-### `BUG-32` — No shape where a shape does nothing
-
-A stick and a pad are drawn and pressed as circles whatever the document says. The choice is not
-offered for them — the layout the project owner sent has `"shape": "square"` on a stick, which is
-what offering it looks like from the other end.
-
-Unverified.
-
----
-
-### `FEAT-36` — The buttons are one block that moves and hides
-
-Dragged anywhere; long-pressed for **Hide** or **Back to the middle**. Hidden, the block fades to a
-fifth and takes **no touches at all**, so the pad underneath can be dragged through it — which is
-the real answer to a control stuck in a corner behind the panel.
-
-**Touching any control brings it back.** A hidden panel recoverable only from a menu inside itself
-would be a way to lose Save and Exit.
+**The toggle only ever dims, which is a deliberate deviation from what was asked.** It is the way
+out. A user who cannot make the controls go away has lost their phone until they reboot it, which
+has happened here once, and a way out that hides itself — or that costs a tap to wake before it will
+work — is that same fault with a timer attached. It fades, and it acts on the first touch.
 
 Unverified on the device.
 
 ---
 
-### `FEAT-37` — The screen in nine
+### `FEAT-43` — A dot on the anchor
 
-Two brighter lines each way, over the fine grid. A layout is talked about in those terms — top-left,
-bottom-middle — and the fine grid is for placing a control rather than saying where it is.
-Unverified.
+An offset is a distance from a point; the point was named in words and drawn nowhere. Unverified.
 
 ---
 
-### The supplied layout is not the built-in, and here is exactly why
+### `BUG-35`, `BUG-36`, `BUG-32`, `BUG-34`, `FEAT-37` — the smaller ones
 
-`user.xbox.json` and two screenshots were sent as the new default. It was checked against the rules
-the shipped layout keeps, and it fails one:
-
-- `stick.right.press` and `menu.start`: 87px apart, 110px is touching — **at the default size**.
-- `dpad` against `menu.select` and `shoulder.l2`: clean to **89%** and overlapping above it. The
-  left column holds the pad, `L3`, `L1`, `Select` and `L2` in one strip and there is not room for
-  them at 100%.
-
-`MAX_CONTROL_SCALE` is 1.00, so a user who drags the size slider up gets a pad with its d-pad under
-the Select button. That is the fault `BuiltInLayoutsTest` was written to catch, and it caught it —
-the arrangement is right at the size it was arranged at, which is 85%, and wrong above 89%.
-
-**Nothing about the project owner's own layout was touched.** It is on the device as `user.xbox` and
-works. What was not done is promoting it to the layout everybody gets, and three ways forward are in
-`todo-list.md` for the project owner to choose between.
+The block is clamped to the screen. The nine-part lines snap to the nearest grid line, because two
+sets of lines that nearly agree read as a mistake. The shape choice is gone for sticks and pads. The
+analog profile reaches the pad already on screen. The menu is wider again. All unverified on the
+device except `BUG-34`, which was confirmed working in a game and incompletely — see `BUG-37`.
 
 ---
 

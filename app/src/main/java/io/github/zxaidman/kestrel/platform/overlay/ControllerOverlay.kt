@@ -17,6 +17,7 @@ import android.view.View
 import android.view.WindowManager
 import io.github.zxaidman.kestrel.core.input.AnalogProfile
 import io.github.zxaidman.kestrel.core.input.GamepadControl
+import io.github.zxaidman.kestrel.core.input.applyStick
 import io.github.zxaidman.kestrel.core.layout.Anchor
 import io.github.zxaidman.kestrel.core.layout.Cluster
 import io.github.zxaidman.kestrel.core.layout.Clustering
@@ -124,11 +125,15 @@ public class ControllerOverlay(
                 params(size, size, Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, toggleMargin(size)),
             )
             toggle = view
+            lastTouch = android.os.SystemClock.uptimeMillis()
+            idleClock.removeCallbacks(idleTick)
+            idleClock.postDelayed(idleTick, IDLE_TICK_MS)
             true
         }.getOrElse { false }
     }
 
     public fun hide() {
+        idleClock.removeCallbacks(idleTick)
         hideControls()
         toggle?.let { runCatching { windows?.removeView(it) } }
         toggle = null
@@ -336,7 +341,66 @@ public class ControllerOverlay(
     }
 
     private fun toggleControls() {
+        touched()
         if (controlsVisible) hideControls() else showControls()
+    }
+
+    // --- getting out of the way ---------------------------------------------------------------
+
+    /**
+     * The pad fades and then goes, on its own, and the toggle only ever fades.
+     *
+     * A pad is drawn over somebody else's application, so a hand that is not using it is a hand
+     * that would rather see the game. Two stages: dimmed but still working, then gone — and the
+     * toggle brings it back, which is the same gesture that has always brought it back.
+     *
+     * **The toggle never disappears and never needs waking.** It is the way out. A user who cannot
+     * make the controls go away has lost their phone until they reboot it, which has happened here
+     * once; a way out that hides itself, or that costs a tap to reach, is that fault with a timer
+     * attached.
+     */
+    private val idleClock = android.os.Handler(android.os.Looper.getMainLooper())
+    private var lastTouch = android.os.SystemClock.uptimeMillis()
+
+    private val idleTick = object : Runnable {
+        override fun run() {
+            applyIdle()
+            idleClock.postDelayed(this, IDLE_TICK_MS)
+        }
+    }
+
+    /** Called by anything the user does to the pad. Restores it if it had faded or gone. */
+    internal fun touched() {
+        val wasIdle = android.os.SystemClock.uptimeMillis() - lastTouch >= idleAfterMs()
+        lastTouch = android.os.SystemClock.uptimeMillis()
+        if (wasIdle) applyIdle()
+    }
+
+    private fun idleSettings() =
+        io.github.zxaidman.kestrel.platform.settings.AppSettings.current.value.idle
+
+    private fun idleAfterMs(): Long = idleSettings().seconds.toLong() * 1000L
+
+    private fun applyIdle() {
+        val settings = idleSettings()
+        if (!settings.enabled) {
+            toggle?.alpha = 1f
+            clusters.forEach { it.alpha = 1f }
+            return
+        }
+        val quiet = android.os.SystemClock.uptimeMillis() - lastTouch
+        val step = idleAfterMs()
+
+        toggle?.alpha = if (quiet >= step) IDLE_ALPHA else 1f
+
+        if (!controlsVisible) return
+        if (quiet >= step * 2) {
+            // Stage two. Everything is released on the way out, which `hideControls` already does —
+            // a control that vanishes mid-press leaves nothing behind able to let go of it.
+            hideControls()
+        } else {
+            clusters.forEach { it.alpha = if (quiet >= step) IDLE_ALPHA else 1f }
+        }
     }
 
     /**
@@ -352,7 +416,7 @@ public class ControllerOverlay(
 
         val added = mutableListOf<ClusterView>()
         val ok = plan.all { piece ->
-            val view = ClusterView(context, engine, profile, piece.members)
+            val view = ClusterView(context, engine, profile, piece.members, ::touched)
             runCatching {
                 windows?.addView(
                     view,
@@ -454,6 +518,12 @@ public class ControllerOverlay(
     public companion object {
         /** Whether the user has allowed drawing over other applications. */
         public fun permitted(context: Context): Boolean = Settings.canDrawOverlays(context)
+
+        /** Faded far enough to see a game through, and not so far that it cannot be aimed at. */
+        private const val IDLE_ALPHA = 0.35f
+
+        /** Often enough to feel prompt, rarely enough to cost nothing while a game is running. */
+        private const val IDLE_TICK_MS = 500L
     }
 }
 
@@ -620,6 +690,8 @@ private class ClusterView(
     private val engine: InputEngine,
     var profile: AnalogProfile,
     private var controls: List<PlacedControl>,
+    /** Told about every touch, so an untouched pad can decide it is not being used. */
+    private val onUse: () -> Unit,
 ) : View(context) {
 
     /** What this window holds, so the overlay can tell whether a plan still fits these windows. */
@@ -736,8 +808,20 @@ private class ClusterView(
 
         val knobRadius = r * KNOB
         val travel = r - knobRadius
-        val kx = control.centerX + (stickX[control.id] ?: 0f) * travel
-        val ky = control.centerY + (stickY[control.id] ?: 0f) * travel
+        // The knob shows **what is being sent**, not where the thumb is.
+        //
+        // Reported on the reference device: dead zone, curve and sensitivity could be felt in a
+        // game and not on the pad, while the diagnostics screen's own stick showed them plainly.
+        // The pad was drawing the raw finger and sending the shaped value, so the one place a
+        // player looks while tuning was the one place the tuning did not appear. A knob that does
+        // not leave the centre until the dead zone is passed is the dead zone, visible.
+        val shaped = applyStick(
+            (stickX[control.id] ?: 0f).toDouble(),
+            (stickY[control.id] ?: 0f).toDouble(),
+            profile,
+        )
+        val kx = control.centerX + shaped.x.toFloat() * travel
+        val ky = control.centerY + shaped.y.toFloat() * travel
         // Lit while a thumb is on it, like every other control. A stick was once the one control
         // that gave no sign of being touched.
         val held = pointerAxis.containsValue(control.id)
@@ -861,6 +945,7 @@ private class ClusterView(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        onUse()
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 // A cluster window is a rectangle and its controls are not. A touch in the space

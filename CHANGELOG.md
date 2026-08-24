@@ -13,6 +13,66 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.35-dev` — 100% Means What The Project Owner Set
+
+**The scale moved instead of the layout.** An arrangement that overlapped itself above 89% could not
+ship as a default while the size slider ran to 100%. The project owner's answer was to redefine the
+number: what was 80% is 100%, and the range is 50% to 200%. Every number in the shipped layout is
+multiplied by 0.80, and the arrangement is theirs — both orientations, from the file they sent.
+
+That changes what a shipped layout has to promise, and the smaller promise is the honest one: **no
+overlap and nothing off the screen at the default size and every size below it.** At 200% a pad is
+being deliberately enlarged and what it runs into is the user's business. Requiring a layout to stay
+clear of itself at twice its size would rule out every arrangement worth shipping.
+
+**Old settings are converted rather than reinterpreted.** Every file on a phone holds a size in the
+old scheme, and reading an old `0.80` as a new `0.80` would shrink somebody's pad by a fifth without
+telling them. The file carries a `scaleScheme` marker; one without it is old by definition, is
+checked against the range it was written under — so its author hears about the limit that applied to
+them — and is then converted.
+
+**The pad's stick shows what is being sent.** Last round's fix was right and incomplete: the shaping
+started reaching the game, and the picture did not change, because the pad drew its knob under the
+thumb. So the one place somebody looks while tuning a dead zone was the one place the dead zone never
+appeared — while the diagnostics screen's own stick showed it plainly. Third time two renderers of
+the same thing have been allowed to disagree. A knob that does not leave the centre until the dead
+zone is passed *is* the dead zone, visible.
+
+**The pad gets out of the way on its own.** Untouched, the controls dim; untouched again, they go,
+and the toggle brings them back. A switch turns it off, a slider sets the interval. **The toggle
+itself only ever dims**, which is a deliberate deviation from what was asked: it is the way out, and
+a way out that hides itself — or costs a tap to wake — is the fault that once cost a reboot, with a
+timer attached.
+
+Also: a red dot marks the selected control's anchor, which an offset has always been measured from
+and which was drawn nowhere; the floating block is clamped to the screen it could previously be
+dragged off; the nine-part lines snap to the grid, because two sets of lines that nearly agree read
+as a mistake; and the menu is wider again.
+
+**Fifty items `done`.**
+
+**The sizing proposal, assessed.** `CRIT-Gamepade-size-position.md` arrived on the branch mid-round
+and invites criticism in its §5, so here it is.
+
+Its §2 — nine anchor points, positive numbers from a corner, signed ones from an edge or the centre —
+is what Kestrel already does, down to the sign convention. Its §4.2 named a real bug: changing a
+control's anchor kept the offsets, so a control pinned bottom-left at `0.2, 0.2` became one pinned
+top-right at `0.2, 0.2`, which is the opposite corner. **Fixed** — the position is kept and the
+numbers recalculated.
+
+**Its §2 and its §4.1 contradict each other, and §4.1 is right.** §2 asks for positions in the
+phone's actual pixels; §4.1 asks the system not to be locked to one screen and to scale to other
+phones without stretching. Those cannot both hold: a pixel is a different physical size on every
+panel, so a layout stored in pixels either moves or stretches on the next device — which is the
+failure §4.1 exists to prevent. Fractions of the screen's shorter side *are* §4.1, written down.
+
+What is genuinely missing is that pixels are shown everywhere except where numbers are typed. That
+is `FEAT-45`, and the file stays in fractions for §4.1's own reason. §3's sizing limits become
+`FEAT-46`, stated in millimetres — because a thumb is measured in millimetres and that is the same
+on every panel — and not varying by layout type, because a thumb is a thumb whether the pad calls
+itself Xbox or Switch.
+
+
 ### `0.0.34-dev` — The Sliders Reach The Pad, And The Cutout Stops Being A Band
 
 **The stick shaping never reached the pad in your hand.** `ControllerOverlay.update(profile)` exists

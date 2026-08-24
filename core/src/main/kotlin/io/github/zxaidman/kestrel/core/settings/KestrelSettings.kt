@@ -44,6 +44,9 @@ public data class KestrelSettings(
     /** How the editor was last set up. Working state, kept because a hand should not reset it. */
     public val editor: EditorPreferences = EditorPreferences(),
 
+    /** When an untouched pad gets out of the way. */
+    public val idle: IdlePreferences = IdlePreferences(),
+
     /** The shaping applied to both sticks. */
     public val stickProfile: AnalogProfile = AnalogProfile.DEFAULT_STICK,
 
@@ -74,9 +77,9 @@ public data class KestrelSettings(
          * The default reproduces the arrangement settled by a hand on the reference device. It is
          * not 100% because a size everybody uses should have somewhere to grow.
          */
-        public const val DEFAULT_CONTROL_SCALE: Double = 0.85
-        public const val MIN_CONTROL_SCALE: Double = 0.40
-        public const val MAX_CONTROL_SCALE: Double = 1.00
+        public const val DEFAULT_CONTROL_SCALE: Double = 1.00
+        public const val MIN_CONTROL_SCALE: Double = 0.50
+        public const val MAX_CONTROL_SCALE: Double = 2.00
     }
 }
 
@@ -85,7 +88,7 @@ public object SettingsDocument {
 
     private val KNOWN_FIELDS = setOf(
         "schemaVersion", "type", "id", "name",
-        "controlScale", "controlScalePortrait", "editor", "layoutId", "stick",
+        "controlScale", "controlScalePortrait", "scaleScheme", "editor", "idle", "layoutId", "stick",
         "display",
     )
     private val KNOWN_STICK_FIELDS = setOf(
@@ -131,13 +134,46 @@ public object SettingsDocument {
 
         val defaults = KestrelSettings()
 
-        val scale = when (
-            val v = optionalNumber(
-                obj, "controlScale",
-                KestrelSettings.MIN_CONTROL_SCALE, KestrelSettings.MAX_CONTROL_SCALE,
-                defaults.controlScale,
-            )
+        // Which scheme the stored sizes are in.
+        //
+        // The project owner reset what 100% means: what used to be 80% is now 100%, and the slider
+        // runs from 50% to 200%. Every settings file already on a phone holds a number in the old
+        // scheme, and reading one as if it were the new scheme would shrink somebody's pad by a
+        // fifth without telling them — a silent change to a thing they can see.
+        //
+        // Absent means the old scheme, because that is what a file without the marker is.
+        val storedScheme = when (
+            val v = optionalNumber(obj, "scaleScheme", 1.0, SCALE_SCHEME.toDouble(), 1.0)
         ) {
+            is Outcome.Failure -> return v
+            is Outcome.Success -> v.value.toInt()
+        }
+
+        // Checked against the range the number was written in, then converted. Validating an old
+        // number against the new range would refuse a perfectly good 0.40, and validating it
+        // against a loose range would report a limit that is not the real one — the message a user
+        // sees has to name the limit that actually applies to what they typed.
+        val old = storedScheme < SCALE_SCHEME
+        val min = if (old) OLD_MIN_CONTROL_SCALE else KestrelSettings.MIN_CONTROL_SCALE
+        val max = if (old) OLD_MAX_CONTROL_SCALE else KestrelSettings.MAX_CONTROL_SCALE
+
+        fun scaleIn(field: String, fallback: Double): Outcome<Double> {
+            // Absent means the default, and a default is already in the current scheme. Converting
+            // it would move a setting nobody has ever touched.
+            if (!obj.has(field)) return Outcome.Success(fallback)
+            val raw = when (val v = ConfigReader.number(obj, field, min, max)) {
+                is Outcome.Failure -> return v
+                is Outcome.Success -> v.value
+            }
+            val converted = if (old) raw / SCALE_SCHEME_2_FACTOR else raw
+            return Outcome.Success(
+                converted.coerceIn(
+                    KestrelSettings.MIN_CONTROL_SCALE, KestrelSettings.MAX_CONTROL_SCALE,
+                )
+            )
+        }
+
+        val scale = when (val v = scaleIn("controlScale", defaults.controlScale)) {
             is Outcome.Failure -> return v
             is Outcome.Success -> v.value
         }
@@ -161,16 +197,16 @@ public object SettingsDocument {
             KestrelSettings(
                 controlScale = scale,
                 controlScalePortrait = when (
-                    val v = optionalNumber(
-                        obj, "controlScalePortrait",
-                        KestrelSettings.MIN_CONTROL_SCALE, KestrelSettings.MAX_CONTROL_SCALE,
-                        defaults.controlScalePortrait,
-                    )
+                    val v = scaleIn("controlScalePortrait", defaults.controlScalePortrait)
                 ) {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value
                 },
                 editor = when (val v = readEditor(obj, defaults.editor)) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                },
+                idle = when (val v = readIdle(obj, defaults.idle)) {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value
                 },
@@ -190,7 +226,14 @@ public object SettingsDocument {
             "id" to ConfigNode.Text(KestrelSettings.DOCUMENT_ID),
             "name" to ConfigNode.Text("Kestrel settings"),
             "controlScale" to ConfigNode.Num(settings.controlScale),
+            "scaleScheme" to ConfigNode.Num(SCALE_SCHEME.toDouble()),
             "controlScalePortrait" to ConfigNode.Num(settings.controlScalePortrait),
+            "idle" to ConfigNode.Obj(
+                linkedMapOf(
+                    "enabled" to ConfigNode.Bool(settings.idle.enabled),
+                    "seconds" to ConfigNode.Num(settings.idle.seconds.toDouble()),
+                )
+            ),
             "editor" to ConfigNode.Obj(
                 linkedMapOf(
                     "gridUnit" to ConfigNode.Num(settings.editor.gridUnit),
@@ -294,6 +337,40 @@ public object SettingsDocument {
                 ) {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value
+                },
+            )
+        )
+    }
+
+    private fun readIdle(
+        obj: ConfigNode.Obj,
+        defaults: IdlePreferences,
+    ): Outcome<IdlePreferences> {
+        val idle = when (val node = obj["idle"]) {
+            null, ConfigNode.Null -> return Outcome.Success(defaults)
+            else -> when (val o = ConfigReader.asObject(node, "idle")) {
+                is Outcome.Failure -> return o
+                is Outcome.Success -> o.value
+            }
+        }
+        return Outcome.Success(
+            IdlePreferences(
+                enabled = when (
+                    val v = ConfigReader.boolean(idle, "enabled", defaults.enabled, "idle")
+                ) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                },
+                seconds = when (
+                    val v = optionalNumber(
+                        idle, "seconds",
+                        IdlePreferences.MIN_SECONDS.toDouble(),
+                        IdlePreferences.MAX_SECONDS.toDouble(),
+                        defaults.seconds.toDouble(), "idle",
+                    )
+                ) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value.toInt()
                 },
             )
         )
@@ -403,6 +480,21 @@ public object SettingsDocument {
             AnalogProfile(deadzone, outerLimit, curve, sensitivity, invertX, invertY, shape)
         )
     }
+
+    /**
+     * The scheme the numbers in this file are in.
+     *
+     * `1` is what every file written before this change holds, whether or not it says so. `2` is
+     * the project owner's scheme, where the old 80% is 100%.
+     */
+    private const val SCALE_SCHEME = 2
+
+    /** What the old numbers are divided by to mean the same size in the new scheme. */
+    private const val SCALE_SCHEME_2_FACTOR = 0.80
+
+    /** The range the old scheme's numbers were written and validated in. */
+    private const val OLD_MIN_CONTROL_SCALE = 0.40
+    private const val OLD_MAX_CONTROL_SCALE = 1.00
 
     /** Absent means the default; present means it has to be right. */
     private fun optionalNumber(

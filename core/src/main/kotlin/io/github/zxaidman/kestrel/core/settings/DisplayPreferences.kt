@@ -129,3 +129,32 @@ public data class EditorPreferences(
         public const val MAX_GRID: Double = 0.5
     }
 }
+
+/**
+ * When the pad gets out of the way on its own.
+ *
+ * A pad is drawn over somebody else's application, and a hand that is not using it is a hand that
+ * would rather see the game. So after a while of no touches the controls fade, and after a while
+ * longer they go — and the toggle brings them back.
+ *
+ * **The toggle itself only ever fades.** It is the way out: a user who cannot make the controls go
+ * away has lost their phone until they reboot it, which has happened here once. Fading it is a
+ * courtesy; making it need two taps, or letting it disappear, would be the same mistake with a
+ * timer attached.
+ */
+public data class IdlePreferences(
+    public val enabled: Boolean = true,
+
+    /**
+     * Seconds of no touch before the first stage.
+     *
+     * The same number is used twice: the controls fade after it, and go after it again. One number
+     * is one thing to explain and one thing to set.
+     */
+    public val seconds: Int = 5,
+) {
+    public companion object {
+        public const val MIN_SECONDS: Int = 2
+        public const val MAX_SECONDS: Int = 120
+    }
+}

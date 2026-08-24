@@ -52,15 +52,15 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.34-dev`
+## State of the queue — build `0.0.35-dev`
 
 | Phase | Items |
 | --- | --- |
-| `done` | forty-eight — every `BUG` from 9 to 31, and `FEAT-10`–`FEAT-32` except `FEAT-13`, plus `CRIT-5`, `BUG-1` and `BUG-2` |
+| `done` | fifty — every `BUG` from 9 to 33 bar 32 and 34, and `FEAT-10`–`FEAT-36` bar 13, 33 and the pending ones |
 | `superseded` | `FEAT-13` |
-| `testing` | `BUG-32`, `BUG-33`, `BUG-34`, `FEAT-36`, `FEAT-37` |
+| `testing` | `CRIT-6`, `CRIT-7`, `BUG-32`, `BUG-34`–`BUG-38`, `FEAT-37`, `FEAT-43`, `FEAT-44` |
 | `building` | — |
-| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42` |
+| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
 
@@ -173,6 +173,169 @@ chooser for other ratios is a later addition, not part of this.
 
 **Blocks:** `FEAT-10`, `FEAT-11`, `FEAT-12` and `BUG-9` all happen on this canvas. Doing them first
 would mean building each one twice.
+
+---
+
+### `BUG-35` — The buttons could be dragged off the screen
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.34-dev`.
+
+`FEAT-36` made the block draggable and clamped nothing, so Save and Exit could be pushed over an
+edge and left there. Its travel is now half the screen less half of itself, each way.
+
+---
+
+### `BUG-36` — The nine-part lines did not line up with the grid
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"it should not be using new lines instead either it always snap to nearest grid line
+or make our grid divide so it lineup with it."*
+
+Two sets of lines that nearly agree read as a mistake. The thirds are snapped to the nearest grid
+line — a third of a screen is not a measurement anybody needs to the pixel, while "is this control
+on a line" is asked constantly.
+
+---
+
+### `BUG-37` — The pad's stick showed the finger, not the value
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.34-dev`. *"on Joystick feeling is still the same… but in-game it
+is working and feelable. on homepage joystick test it is much more feelable."*
+
+`BUG-34` was fixed and the shaping does reach the game — the project owner confirmed it. What did
+not change was the **picture**: the pad drew its knob under the thumb and sent the shaped value, so
+the one place somebody looks while tuning a dead zone was the one place the dead zone did not
+appear. The diagnostics screen's own stick drew the shaped value, which is why that one felt right.
+
+Two renderers of the same stick disagreeing, again. The pad's knob draws what is being sent: a knob
+that does not leave the centre until the dead zone is passed **is** the dead zone, visible.
+
+---
+
+### `FEAT-43` — A dot on the anchor
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"Once the gamepad button is selected mark a red dot on its anchor point."*
+
+An offset is a distance from a point, and that point was named in words and shown nowhere.
+
+---
+
+### `FEAT-44` — The pad gets out of the way on its own
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"Make the K button after not clicking it for 5s halftone de-active… Similarly do it
+with a gamepad. But in two stages, in the 5s halftone but still active, another 5s hide it… But give
+the user options to toggle it off and increase the timer."*
+
+Two stages for the pad: dimmed but still working, then gone, with the toggle bringing it back —
+which is the gesture that has always brought it back. Off by a switch, and the interval is a slider
+from 2s to 120s.
+
+**One deviation, and it is deliberate. The toggle only ever dims.** It is the way out. A user who
+cannot make the controls go away has lost their phone until they reboot it, which has happened here
+once — and a way out that hides itself, or that costs a tap to wake before it will work, is that
+same fault with a timer attached. It fades, and it works on the first touch.
+
+---
+
+### `CRIT-6` — The default layout is the project owner's, and 100% means what they set
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Decided:** *"make 0.80 scale as new 100%, and scale min as 50% and max as 200%."*
+
+The arrangement sent last round could not ship as a default because it overlapped itself above 89%
+while the slider ran to 100%. The project owner's answer moves the scale rather than the layout:
+what was 80% is 100%, and the range becomes 50%–200%.
+
+That makes their arrangement clean at the default and up to about 111%, and it changes what the
+shipped layout has to promise. **The promise is now: no overlap and nothing off the screen at the
+default size and every size below it.** Above the default, a pad is being deliberately enlarged and
+what it collides with is the user's business; the editor marks what leaves the screen.
+
+**Every settings file already on a phone holds a number in the old scheme**, so the file carries a
+`scaleScheme` marker and a file without one is converted on the way in. Reading an old 0.80 as a new
+0.80 would have shrunk somebody's pad by a fifth without telling them.
+
+---
+
+### `CRIT-7` — The sizing and placement proposal, assessed
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Source:** `docs/inbox/ideas/CRIT-Gamepade-size-position.md`, pushed by the project owner, §5 of
+which invites criticism.
+
+**§2, the nine anchor points: already exactly this.** `Anchor` has all nine, and `resolve` applies
+an offset **inwards** from the anchor — so a corner takes positive numbers in both directions, and
+an edge or the centre takes signed ones running the way the proposal describes. Nothing to build;
+worth saying plainly, because a proposal to build what exists is usually a sign the existing thing
+is not visible enough.
+
+**§4.2, changing an anchor must not move the control: a real bug, and it is fixed.** The anchor
+changed and the offsets were kept, so a control pinned bottom-left at `0.2, 0.2` became one pinned
+top-right at `0.2, 0.2` — the opposite corner. It now keeps its position and the numbers are
+recalculated. → `BUG-38`.
+
+**§2 and §4.1 contradict each other, and §4.1 is right.** §2 asks for positions in the phone's
+actual pixels; §4.1 asks the system not to be locked to one screen and to scale to tablets and other
+phones without stretching. **Those cannot both hold.** A pixel is a different physical size on every
+panel, so a layout stored in pixels either moves or stretches on the next device — which is the
+requirement §4.1 exists to prevent.
+
+Fractions of the screen's **shorter side** are what §4.1 asks for, written down: a control keeps its
+shape, keeps its size relative to the hand, and lands correctly on a phone with a cutout and one
+without. That is not a preference; it is the only unit that satisfies §4.1.
+
+**What is genuinely missing is that the numbers are not shown in pixels where they are typed.**
+The editor already reports a control as `302 × 302 px` and labels the grid `0.04 · 37 px`, and the
+values dialog takes fractions only. Presentation and storage are different questions — this project
+has drawn that line twice already — so the dialog gains a unit switch. → `FEAT-45`.
+
+**§3, sizes that vary by layout type:** the limits that exist (`MIN_SIZE`, `MAX_SIZE`) catch nonsense
+rather than protect a thumb. → `FEAT-46`.
+
+---
+
+### `BUG-38` — Changing an anchor moved the control
+
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** the project owner's proposal, §4.2.
+
+The anchor changed and the offsets were kept. Position is preserved now, in the document's own terms
+at full size — an offset scales and an anchor does not, so "the same spot" is a different pair of
+numbers at every size, and the document is the thing being edited. At the default size, which is now
+full size, the two answers coincide.
+
+---
+
+### `FEAT-45` — Type a size in pixels
+
+**Phase:** `pending`
+**From:** the proposal's §2, read as what it is useful for.
+
+The values dialog takes fractions of the shorter side, which is what the file holds and not what an
+eye measures. A switch between `0.28` and `302 px`, converting on the way in and out, with the file
+unchanged either way.
+
+**The file stays in fractions**, for the reason the proposal's own §4.1 gives.
+
+---
+
+### `FEAT-46` — Sizes bounded by a thumb rather than by nonsense
+
+**Phase:** `pending`
+**From:** the proposal's §3.
+
+`MIN_SIZE` is 0.01 and `MAX_SIZE` is 2.0 — bounds that catch a corrupt file, not bounds that keep a
+control usable. A minimum should be stated in **millimetres**, because that is what a thumb is
+measured in and it is the same on every panel; the platform's own guidance is about 9mm. A maximum
+matters less and is a fraction of the screen.
+
+**Not per "layout type" as the proposal suggests**, unless a reason appears: a thumb is a thumb
+whether the pad is calling itself Xbox or Switch, and a limit that changes with a label is a limit
+somebody will trip over without knowing why.
 
 ---
 
@@ -647,7 +810,7 @@ lighter band is the system bars" was a fact with no consequence attached to it.
 
 ### `BUG-32` — A shape offered for a control that ignores it
 
-**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Asked for:** *"remove the shape from gamepad which doesn't support it."*
 
 A stick and a pad are drawn and pressed as circles whatever the document says, for a reason recorded
@@ -661,7 +824,7 @@ The choice is not shown for those kinds.
 
 ### `BUG-33` — The camera cutout is not a band
 
-**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported with a screenshot, build `0.0.33-dev`. *"in landscape mode the left bar is not
 system band it is the camera notch area which is useable whether on fullscreen or not."*
 
@@ -679,7 +842,7 @@ The band is the system bars alone.
 
 ### `BUG-34` — Dead zone, curve and sensitivity changed nothing you could feel
 
-**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Found by:** Reported, build `0.0.33-dev`. *"how can I feel it immediately… while control joystick
 works the same."*
 
@@ -1195,7 +1358,7 @@ and adding one is a licence question to answer at the time rather than in advanc
 
 ### `FEAT-30` — The toggle is part of the layout
 
-**Phase:** `pending` — next.
+**Phase:** `pending`
 **Asked for:** *"make K button editable both editor and json and customisable theme like rest of
 gamepad. use gamepad icon."*
 
@@ -1248,7 +1411,7 @@ is on the screen — `BuiltInLayoutsTest` checks exactly that, at every size, in
 
 ### `FEAT-33` — A font for the application, including one somebody brings
 
-**Phase:** `pending` — queued; the custom-font half is a storage job, not a font job.
+**Phase:** `pending`
 **Asked for:** *"Add option for app font style… System default… few Games related font which are
 available on google font or any free license font… And lastly user custom font file from file
 picker (.tff and any support one)."*
@@ -1317,7 +1480,7 @@ that finds nothing is not a no-op, it is a silent failure to do the work.
 
 ### `FEAT-36` — The buttons are one block, and it gets out of the way
 
-**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for, as the answer to `BUG-30`:** *"Make floating btn and notes as one window then put it
 only within center-mid without overflow… then the user can hold and drag it across the screen. When
 the user long presses it, give it an option to hide it, and the window will turn as a halftone
@@ -1335,7 +1498,7 @@ would be a way to lose Save and Exit.
 
 ### `FEAT-37` — The screen in nine
 
-**Phase:** `testing` — built in `0.0.34-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.35-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Asked for:** *"We have divided the whole screen into 9 parts. Give bold light color to the grid
 line across the screen to show it."*
 
@@ -1403,7 +1566,7 @@ malformed. A layout arriving from someone else is untrusted input.
 
 ### `FEAT-42` — Keyboard and mouse
 
-**Phase:** `pending` — a feasibility experiment before any design, like Phase 0.
+**Phase:** `pending`
 
 **Asked for as an experiment, and it must stay one.** Everything Kestrel knows about delivering
 input was established by measurement, and none of it was about a keyboard or a mouse: whether a
@@ -1767,6 +1930,39 @@ owner's:
    takes the size headroom away from everyone.
 3. **Leave the built-in as it is.** The supplied arrangement stays a personal layout, which is what
    the built-in → duplicate → edit workflow is for.
+
+
+
+### Round `0.0.34-dev` — the shaping arrives, and the picture did not
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–4 | Stick shaping | **Reaches the game** — confirmed in play. The pad's own knob still showed the raw finger → `BUG-37` |
+| 5–7 | The band, the cutout | **Working** |
+| 8, 10–13 | Drag, hide, hide-through, recentre | **Working** |
+| 9 | Clamping | Missing — the block slides off the screen → `BUG-35` |
+| 14 | The screen in nine | Working; the lines must agree with the grid → `BUG-36` |
+| 15 | Shape gating | **Working** |
+| 16 | Menu width | Still not comfortable — wider again |
+| 17 | Regression | None seen; not a full pass |
+
+### Decisions this round
+
+- **100% is what 80% was**, and the range is 50%–200% → `CRIT-6`, which also makes the project
+  owner's arrangement the shipped default.
+- **A red dot on the anchor** → `FEAT-43`.
+- **The pad fades and then goes when untouched** → `FEAT-44`.
+
+### Not found
+
+**Found, after this was written.** The item arrived on the branch as `e1ec4fc` while this round was
+being built — `docs/inbox/ideas/CRIT-Gamepade-size-position.md`. It is assessed as `CRIT-7`, and one
+real bug came out of it (`BUG-38`). What follows is what was true when it was first looked for, kept
+because the search itself is worth recording: `main` is at
+`6e64091` and unchanged, this branch's newest commit is this side's, there are no other branches
+except `cline/android-app-implementation` from 18 August, no issues, and no comments on the pull
+request. The only thing under `docs/inbox/ideas/` is the Game Stage spec, assessed on 20 August and
+already recorded in `CHANGELOG.md`. Nothing has been acted on and nothing has been assumed.
 
 
 ### Awaiting

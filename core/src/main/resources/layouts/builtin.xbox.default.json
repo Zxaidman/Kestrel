@@ -2,157 +2,353 @@
   "schemaVersion": 1,
   "type": "controller-layout",
   "id": "builtin.xbox.default",
-  "name": "Xbox — default",
+  "name": "Xbox \u2014 default",
   "orientation": "any",
   "elements": [
     {
       "id": "stick.left",
       "kind": "stick",
       "binds": "left-stick",
+      "label": null,
       "group": "left-stick",
+      "shape": "circle",
       "anchor": "bottom-left",
       "offsetX": 0.22,
-      "offsetY": 0.22,
-      "width": 0.33
+      "offsetY": 0.18,
+      "width": 0.26,
+      "height": 0.26,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-left",
+        "offsetX": 0.18,
+        "offsetY": 0.18,
+        "width": 0.26,
+        "height": 0.26,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "stick.left.press",
       "kind": "button",
       "binds": "left-stick-press",
+      "label": null,
       "group": "left-stick",
+      "shape": "circle",
       "anchor": "bottom-left",
-      "offsetX": 0.48,
-      "offsetY": 0.22,
-      "width": 0.12
+      "offsetX": 0.22,
+      "offsetY": 0.37,
+      "width": 0.1,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-left",
+        "offsetX": 0.37,
+        "offsetY": 0.18,
+        "width": 0.1,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "dpad",
       "kind": "dpad",
       "binds": "dpad",
+      "label": null,
+      "group": null,
+      "shape": "circle",
       "anchor": "bottom-left",
-      "offsetX": 0.17,
-      "offsetY": 0.55,
-      "width": 0.24
+      "offsetX": 0.22,
+      "offsetY": 0.56,
+      "width": 0.22,
+      "height": 0.22,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-left",
+        "offsetX": 0.19,
+        "offsetY": 0.45,
+        "width": 0.22,
+        "height": 0.22,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "face.y",
       "kind": "button",
       "binds": "y",
+      "label": null,
       "group": "face",
+      "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.22,
-      "offsetY": 0.33,
-      "width": 0.12
+      "offsetX": 0.18,
+      "offsetY": 0.26,
+      "width": 0.1,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-right",
+        "offsetX": 0.18,
+        "offsetY": 0.26,
+        "width": 0.1,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "face.x",
       "kind": "button",
       "binds": "x",
+      "label": null,
       "group": "face",
+      "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.33,
-      "offsetY": 0.22,
-      "width": 0.12
+      "offsetX": 0.26,
+      "offsetY": 0.18,
+      "width": 0.1,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-right",
+        "offsetX": 0.26,
+        "offsetY": 0.18,
+        "width": 0.1,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "face.b",
       "kind": "button",
       "binds": "b",
+      "label": null,
       "group": "face",
+      "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.12,
-      "offsetY": 0.22,
-      "width": 0.12
+      "offsetX": 0.1,
+      "offsetY": 0.18,
+      "width": 0.1,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-right",
+        "offsetX": 0.1,
+        "offsetY": 0.18,
+        "width": 0.1,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "face.a",
       "kind": "button",
       "binds": "a",
+      "label": null,
       "group": "face",
+      "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.22,
-      "offsetY": 0.12,
-      "width": 0.12
+      "offsetX": 0.18,
+      "offsetY": 0.1,
+      "width": 0.1,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-right",
+        "offsetX": 0.18,
+        "offsetY": 0.1,
+        "width": 0.1,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "stick.right",
       "kind": "stick",
       "binds": "right-stick",
+      "label": null,
       "group": "right-stick",
+      "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.22,
-      "offsetY": 0.6,
-      "width": 0.33
+      "offsetX": 0.18,
+      "offsetY": 0.48,
+      "width": 0.26,
+      "height": 0.26,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-right",
+        "offsetX": 0.18,
+        "offsetY": 0.48,
+        "width": 0.26,
+        "height": 0.26,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "stick.right.press",
       "kind": "button",
       "binds": "right-stick-press",
+      "label": null,
       "group": "right-stick",
+      "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.48,
-      "offsetY": 0.6,
-      "width": 0.12
+      "offsetX": 0.18,
+      "offsetY": 0.68,
+      "width": 0.1,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "bottom-right",
+        "offsetX": 0.37,
+        "offsetY": 0.48,
+        "width": 0.1,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": "circle"
+      }
     },
     {
       "id": "shoulder.l1",
       "kind": "button",
       "binds": "left-bumper",
+      "label": null,
       "group": "left-top",
+      "shape": "rectangle",
       "anchor": "top-left",
-      "offsetX": 0.1,
-      "offsetY": 0.1,
-      "width": 0.09
+      "offsetX": 0.14,
+      "offsetY": 0.08,
+      "width": 0.19,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "center-left",
+        "offsetX": 0.14,
+        "offsetY": 0.24,
+        "width": 0.19,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "shoulder.l2",
       "kind": "analog-trigger",
       "binds": "left-trigger",
+      "label": null,
       "group": "left-top",
+      "shape": "rectangle",
       "anchor": "top-left",
-      "offsetX": 0.35,
-      "offsetY": 0.1,
-      "width": 0.09
+      "offsetX": 0.3,
+      "offsetY": 0.14,
+      "width": 0.1,
+      "height": 0.21,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "center-left",
+        "offsetX": 0.3,
+        "offsetY": 0.3,
+        "width": 0.1,
+        "height": 0.21,
+        "rotation": 0,
+        "shape": "rectangle"
+      }
     },
     {
       "id": "menu.select",
       "kind": "button",
       "binds": "select",
+      "label": null,
       "group": "left-top",
+      "shape": "rectangle",
       "anchor": "top-left",
-      "offsetX": 0.1,
-      "offsetY": 0.21,
-      "width": 0.09
+      "offsetX": 0.14,
+      "offsetY": 0.19,
+      "width": 0.19,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "center-left",
+        "offsetX": 0.14,
+        "offsetY": 0.35,
+        "width": 0.19,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": "rectangle"
+      }
     },
     {
       "id": "shoulder.r1",
       "kind": "button",
       "binds": "right-bumper",
+      "label": null,
       "group": "right-top",
+      "shape": "rectangle",
       "anchor": "top-right",
-      "offsetX": 0.1,
-      "offsetY": 0.1,
-      "width": 0.09
+      "offsetX": 0.14,
+      "offsetY": 0.08,
+      "width": 0.19,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "center-right",
+        "offsetX": 0.14,
+        "offsetY": 0.24,
+        "width": 0.19,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": null
+      }
     },
     {
       "id": "shoulder.r2",
       "kind": "analog-trigger",
       "binds": "right-trigger",
+      "label": null,
       "group": "right-top",
+      "shape": "rectangle",
       "anchor": "top-right",
-      "offsetX": 0.35,
-      "offsetY": 0.1,
-      "width": 0.09
+      "offsetX": 0.3,
+      "offsetY": 0.14,
+      "width": 0.1,
+      "height": 0.21,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "center-right",
+        "offsetX": 0.3,
+        "offsetY": 0.3,
+        "width": 0.1,
+        "height": 0.21,
+        "rotation": 0,
+        "shape": "rectangle"
+      }
     },
     {
       "id": "menu.start",
       "kind": "button",
       "binds": "start",
+      "label": null,
       "group": "right-top",
+      "shape": "rectangle",
       "anchor": "top-right",
-      "offsetX": 0.1,
-      "offsetY": 0.21,
-      "width": 0.09
+      "offsetX": 0.14,
+      "offsetY": 0.19,
+      "width": 0.19,
+      "height": 0.1,
+      "rotation": 0,
+      "portrait": {
+        "anchor": "center-right",
+        "offsetX": 0.14,
+        "offsetY": 0.35,
+        "width": 0.19,
+        "height": 0.1,
+        "rotation": 0,
+        "shape": "rectangle"
+      }
     }
   ]
 }
