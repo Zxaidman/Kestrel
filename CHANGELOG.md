@@ -13,6 +13,37 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.40-dev` — The Size Setting, Twice More
+
+**Changing an anchor moved the control at any size but 100%.** An anchor says which edge a control
+keeps its distance from, not where it is — so changing one must leave it exactly where it is drawn.
+That was implemented at full size, and a centre is `origin(anchor) + offset × shortSide × scale`:
+holding the unscaled centre still while the origin moves leaves the drawn centre elsewhere, further
+the further the size setting is from 1.0. At 100% the two are the same number, which is why it
+looked correct until the slider was used.
+
+**The numbers dialog had the same fault.** The range it prints for an offset, and the refusal it
+comes from, both resolved at 100% while the pad draws at the size setting — so it offered a number
+and the pad then proved it wrong.
+
+Both are the shape of fault that took three rounds to find the first time: the document is the pad at
+full size and the setting is applied on top of it, so **anything that reasons about where a control
+is has to apply the setting too**. The re-anchoring arithmetic now lives in `:core` as one tested
+function rather than a copy in the editor.
+
+**A refused value scrolls itself into view.** The dialog body scrolls and the message was the last
+thing in it, so on a landscape phone Apply looked like a button that did nothing.
+
+**Kestrel can no longer write a layout it could not read back.** A layout was reported corrupt after
+a save. The cause is **not established** — the file was deleted before it could be read, and a
+control thrown across the screen by the anchor fault would produce a ruined layout that parses
+perfectly well. So this is a guard rather than a fix: every save round-trips through the same strict
+reader an imported document goes through, and a document that does not survive is refused with the
+reader's own error instead of landing on disk.
+
+**Warning.** The guard closes the family where a file will not *parse*. It does nothing for a layout
+that parses and is simply wrong, and it is not evidence about which of the two happened.
+
 ### `0.0.39-dev` — Save Means This One
 
 **Saving in one orientation wrote both arrangements.** Reported, and it had been true since a layout

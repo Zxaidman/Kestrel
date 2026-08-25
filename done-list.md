@@ -664,6 +664,58 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
+## Built, awaiting confirmation — `0.0.40-dev`
+
+### `BUG-48` — Changing the anchor keeps the control still, at every size
+
+An anchor says which edge a control keeps its distance from, not where it is, so changing one is a
+change of description and the control must not move. That was implemented at full size — and a
+centre is `origin(anchor) + offset × shortSide × scale`, so holding the *unscaled* centre still while
+the origin moves leaves the *drawn* centre elsewhere. At 100% the two are the same number, which is
+why it looked right until the size slider was used. At 115% a control crossed the screen.
+
+The arithmetic is now `Placement.reAnchored(surface, anchor, scale)` in `:core` — scale, re-centre,
+divide the scale back out, the same thing dragging does. It is the only copy and it has a test that
+fails on the old version, at five sizes and every anchor.
+
+**Not a regression from `0.0.39-dev`.** Nothing in that build touched the anchor; what changed was
+the size being tested at. Unverified on a device.
+
+---
+
+### `BUG-47` — The numbers dialog checks the screen the pad is drawn on
+
+The range `FEAT-56` prints, and the refusal it comes from, both resolved at 100% while the pad draws
+at the size setting — so the dialog offered an offset and the pad then put the control off the edge.
+Both apply the setting now, and the message says which size it is talking about.
+
+Third time this shape of fault has been found: the document is the pad at full size and the setting
+is applied on top of it, so anything reasoning about where a control *is* has to apply it too.
+Unverified.
+
+---
+
+### `BUG-49` — Kestrel cannot write a layout it could not read back
+
+A layout was reported corrupt after a save. **The cause is not established** — the file was deleted
+before it could be read, and `BUG-48` throwing controls across the screen would produce a ruined
+layout that parses perfectly well, which is the likelier story.
+
+What was built is a guard: `LayoutRepository.save` writes the document to text, reads it back with
+the same strict reader an imported file goes through, and refuses the write if it does not survive,
+returning the reader's own typed error. That closes the parse-corruption family for every write path
+— the editor, duplicate, and any import added later — and does nothing at all for a layout that is
+merely arranged wrong. Unit tested. Unverified on a device.
+
+---
+
+### `FEAT-59` — A refused value scrolls into view
+
+The dialog body scrolls and the message is the last thing in it, so on a landscape phone Apply
+looked like a button that did nothing. The body scrolls to the message when one appears. Unverified.
+
+---
+
 ## Built, awaiting confirmation — `0.0.39-dev`
 
 ### `BUG-46` — Save writes the orientation on screen

@@ -29,6 +29,30 @@ class LayoutRepositoryTest {
         return (outcome as Outcome.Failure).error as ConfigurationError
     }
 
+    // --- what may be written ------------------------------------------------------------------
+
+    /**
+     * `BUG-49`. The reader is strict because an imported document is untrusted input, and that
+     * strictness is worth nothing if Kestrel's own writer can put something past it. A document
+     * that would not survive the trip back is refused while the work is still on screen, rather
+     * than landing on disk as a file the next launch cannot open.
+     */
+    @Test
+    fun `a layout Kestrel could not read back is refused rather than written`() {
+        val good = value(repository.duplicate(builtIn(), "mine", "Mine"))
+        val broken = good.copy(elements = good.elements + good.elements.first())
+
+        assertTrue(
+            error(repository.save(broken)) is ConfigurationError.DuplicateId,
+            "the reader's own error should come back unwrapped",
+        )
+        assertEquals(
+            good.elements.size,
+            value(repository.load(good.header.id.value)).elements.size,
+            "the file that was already there must be untouched",
+        )
+    }
+
     // --- where a layout comes from ------------------------------------------------------------
 
     @Test

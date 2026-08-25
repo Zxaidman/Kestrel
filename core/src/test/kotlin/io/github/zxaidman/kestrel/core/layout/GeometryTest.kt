@@ -23,6 +23,63 @@ private fun placement(
     rotation: Double = 0.0,
 ) = Placement(anchor, offsetX, offsetY, size, size, rotation)
 
+class ReAnchoringTest {
+
+    private val everyAnchor = listOf(
+        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_RIGHT, Anchor.TOP_LEFT, Anchor.TOP_RIGHT,
+        Anchor.BOTTOM_CENTER, Anchor.TOP_CENTER, Anchor.CENTER_LEFT, Anchor.CENTER_RIGHT,
+    )
+
+    /**
+     * The rule the editor promises: an anchor says which edge a control keeps its distance from,
+     * not where it is, so changing one must leave the control exactly where it is drawn.
+     */
+    @Test
+    fun `changing the anchor does not move the control, at every size the pad can be drawn at`() {
+        val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.30, offsetY = 0.22, size = 0.12)
+
+        for (surface in listOf(WIDE, SQUARE)) {
+            for (scale in listOf(0.5, 0.8, 1.0, 1.15, 1.2)) {
+                val was = start.scaledBy(scale).resolve(surface)
+                for (anchor in everyAnchor) {
+                    val moved = start.reAnchored(surface, anchor, scale)
+                    val now = moved.scaledBy(scale).resolve(surface)
+                    assertEquals(anchor, moved.anchor)
+                    assertEquals(was.centerX, now.centerX, 0.5, "x at $scale on $anchor")
+                    assertEquals(was.centerY, now.centerY, 0.5, "y at $scale on $anchor")
+                }
+            }
+        }
+    }
+
+    /**
+     * `BUG-48` in one assertion. Re-anchoring at full size and then drawing at the size setting is
+     * the arithmetic that threw a control across the screen at 115%, and this is the check that
+     * would have caught it.
+     */
+    @Test
+    fun `re-anchoring at full size moves the control once the size setting is applied`() {
+        val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.30, offsetY = 0.22, size = 0.12)
+        val scale = 1.15
+
+        val naive = start.copy(anchor = Anchor.TOP_RIGHT)
+            .centeredAt(WIDE, start.resolve(WIDE).centerX, start.resolve(WIDE).centerY)
+
+        val was = start.scaledBy(scale).resolve(WIDE)
+        val drawn = naive.scaledBy(scale).resolve(WIDE)
+        assertTrue(
+            kotlin.math.abs(was.centerX - drawn.centerX) > 50.0,
+            "the old arithmetic should be visibly wrong at $scale, and it is what BUG-48 reported",
+        )
+    }
+
+    @Test
+    fun `a scale of zero leaves the placement alone rather than dividing by it`() {
+        val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.30, offsetY = 0.22)
+        assertEquals(start, start.reAnchored(WIDE, Anchor.TOP_RIGHT, 0.0))
+    }
+}
+
 class PlacementTest {
 
     @Test

@@ -52,14 +52,14 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.39-dev`
+## State of the queue — build `0.0.40-dev`
 
 | Phase | Items |
 | --- | --- |
 | `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
 | `testing` | — |
-| `building` | `BUG-7`, `BUG-46`, `FEAT-55`–`FEAT-58` |
+| `building` | `BUG-47`–`BUG-49`, `FEAT-59` |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -720,6 +720,81 @@ the work on screen — and *"Leave without saving?"* would be describing the wro
 The dialog names it: which one is unsaved, that Save writes only the one on screen, and it offers a
 **Go to landscape** / **Go to portrait** button that turns the phone to the pending one instead of
 leaving.
+
+---
+
+### `BUG-47` — The numbers dialog checked the screen at 100%, not at the size the pad is drawn
+
+**Phase:** `building` — `0.0.40-dev`.
+**Reported:** build `0.0.39-dev`. *"it show X offset takes value between 2.21 then I put 2 and it
+went outside of screen bound."*
+
+The range `FEAT-56` reports, and the refusal it comes from, both resolved the placement at **100%**.
+The pad is drawn at the size setting. At 115% a placement that is comfortably on the screen in the
+document is off it on the glass, so the dialog offered a number and then the pad proved it wrong.
+
+**This is the same fault as the one behind three earlier rounds of "the editor does not match the
+pad"** — the document is the pad at full size and the setting is applied on top of it, so anything
+that reasons about where a control *is* has to apply the setting too. Dragging does. The dialog did
+not, and neither did the range it printed.
+
+---
+
+### `BUG-48` — Changing the anchor moved the control at any size but 100%
+
+**Phase:** `building` — `0.0.40-dev`.
+**Reported:** build `0.0.39-dev`. *"there is regression related to anchor point we discussed and
+implementation that if user change the anchor point button should always stay without moving. which
+was working on previous built but it regaress in this build."*
+
+**It is not a regression from `0.0.39-dev`, and saying so matters because the wrong cause would send
+the next person to the wrong code.** Nothing in this build touched the anchor. What changed is the
+size the project owner was testing at: the rule *"changing the anchor must not move the control"*
+was implemented at 100% only, and it holds exactly there.
+
+The arithmetic. A control's centre is `origin(anchor) + offset × shorterSide × scale`. Holding the
+**unscaled** centre fixed while the origin moves to a different anchor leaves the **scaled** centre
+somewhere else, and the further the scale is from 1.0 the further it lands. At 100% the two are the
+same number, which is why it looked correct until the size slider was used.
+
+**Fixed** by doing the arithmetic in the space the pad is drawn in — scale, re-centre, divide the
+scale back out — which is what dragging already does, three lines below the code that did not.
+
+---
+
+### `BUG-49` — A layout was reported corrupt after saving
+
+**Phase:** `building` — `0.0.40-dev`, guard only.
+**Reported:** build `0.0.39-dev`. *"it got my previous save file corrupt… i deleted profile and
+restart it now it is working."*
+
+**The cause is not established and this entry does not claim one.** The file is gone, so there is
+nothing to read. `BUG-48` moved controls a long way on an anchor change and a save after that would
+have written the mess down — that is a layout ruined, which is what the project owner is describing,
+and it is the likeliest reading. It is not proof, and a file that fails to *parse* would be a
+different fault with a different fix.
+
+**What was built is a guard, not a fix.** `LayoutRepository.save` now writes the document to text,
+reads it back with the same strict reader an imported file goes through, and **refuses the write if
+it does not survive the round trip** — reporting the reader's own error. Kestrel can no longer
+produce a file it cannot itself open. That closes the parse-corruption family completely and does
+nothing at all for a layout that is merely wrong, which is the honest split.
+
+**If it happens again: keep the file.** A copy of the broken JSON turns this from a guess into a
+fault with a cause.
+
+---
+
+### `FEAT-59` — A refused value scrolls itself into view
+
+**Phase:** `building` — `0.0.40-dev`.
+**Asked for:** build `0.0.39-dev`, points 6–7. *"enter invalid value and clicking apply button, i
+press two or three time, then scroll to see the warning, so if there is scroll and apply invalid
+value then it should auto scroll so user can see the problem."*
+
+The dialog body scrolls, and the message appears at the bottom of it. On a landscape phone that is
+below the fold, so Apply looked like it did nothing at all — the message was written and never seen.
+The body now scrolls to the message when one appears.
 
 ---
 
@@ -2413,6 +2488,32 @@ already recorded in `CHANGELOG.md`. Nothing has been acted on and nothing has be
   guarantee rather than shrinking the pad further to reach a rounder number, and cut the unmarked
   band from thirty-five points to five.
 - **A refusal names what it would accept.** Applied to offsets now; the rule is general.
+
+---
+
+### Round `0.0.39-dev` — save is per orientation, and the scale caught two more
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–5 | Status lines, the 120% ceiling, overlap marking | **Working** |
+| 6–7 | The offset range | **Working**, but the message is below the fold → `FEAT-59`, and the range it prints is wrong at any size but 100% → `BUG-47` |
+| 8–13 | Per-orientation save, the exit dialog | **Working as expected**, and the dialog names the right orientation |
+| 14–15 | The trigger fill | **Working** |
+
+**Also reported:** changing an anchor moved the control → `BUG-48`, and a layout was found corrupt
+after a save → `BUG-49`.
+
+### Decisions this round
+
+- **`BUG-48` is not a regression, and the entry says so.** Nothing in `0.0.39-dev` touched the
+  anchor. The rule was implemented at 100% only and held exactly there; the size slider is what
+  changed. Recording it as a regression would have sent the next person to the wrong code.
+- **The re-anchoring arithmetic moved into `:core`.** It is pure geometry, it is now the only copy,
+  and it has a test that fails on the old version — which is what makes the difference between a
+  fixed bug and a bug that comes back.
+- **`BUG-49` gets a guard, not a claimed fix.** The file was deleted, so the cause is not
+  established and nothing here pretends otherwise. What was built makes the parse-corruption family
+  impossible and does nothing for a layout that is merely wrong.
 
 ---
 

@@ -296,6 +296,42 @@ public fun PixelRect.shapedAs(shape: ControlShape): PixelRect =
     }
 
 /**
+ * The same control, pinned to a different anchor, without moving on the glass.
+ *
+ * An anchor is a statement about which edge a control keeps its distance from, not about where it
+ * is — so changing one is a change of description, and the control must stay exactly where the eye
+ * has it. That is the rule `CRIT-Gamepade-size-position` §4.2 asks for.
+ *
+ * **[scale] is why this is not two lines.** A control's centre is
+ * `origin(anchor) + offset × shortSide × scale`, and the size setting is applied on top of the
+ * document rather than folded into it. Re-centring at full size therefore holds the promise at
+ * 100% and at no other size: the origin moves to the new anchor, and the *drawn* centre lands
+ * somewhere the further away the further the scale is from 1.0. So the arithmetic is done in the
+ * space the pad is drawn in and the scale is divided back out, leaving the document in the units it
+ * is written in.
+ *
+ * Reported at 115%, where changing an anchor threw a control across the screen (`BUG-48`).
+ *
+ * A scale of zero or less returns the placement untouched — there is nothing sensible to divide by,
+ * and refusing to move is better than inventing a position.
+ */
+public fun Placement.reAnchored(
+    surface: LayoutSurface,
+    anchor: Anchor,
+    scale: Double,
+): Placement {
+    if (scale <= 0.0) return this
+    val shown = scaledBy(scale)
+    val here = shown.resolve(surface)
+    val moved = shown.copy(anchor = anchor).centeredAt(surface, here.centerX, here.centerY)
+    return copy(
+        anchor = anchor,
+        offsetX = moved.offsetX / scale,
+        offsetY = moved.offsetY / scale,
+    )
+}
+
+/**
  * The placement that puts this control's centre at a point on a surface.
  *
  * The inverse of [resolve], and it exists so that dragging a control can be expressed as *where the

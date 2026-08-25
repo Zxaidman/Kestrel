@@ -45,6 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,6 +90,7 @@ import io.github.zxaidman.kestrel.core.layout.centeredAt
 import io.github.zxaidman.kestrel.core.layout.effectiveShapeFor
 import io.github.zxaidman.kestrel.core.layout.isWithin
 import io.github.zxaidman.kestrel.core.layout.resolve
+import io.github.zxaidman.kestrel.core.layout.reAnchored
 import io.github.zxaidman.kestrel.core.layout.scaledBy
 import io.github.zxaidman.kestrel.core.layout.shapedAs
 import io.github.zxaidman.kestrel.core.settings.EditorPreferences
@@ -501,6 +503,7 @@ public fun LayoutEditorScreen(
             ControlMenu(
                 element = menuElement,
                 device = device,
+                controlScale = controlScale,
                 landscape = !portrait,
                 copied = copied,
                 onSize = {
@@ -591,6 +594,7 @@ public fun LayoutEditorScreen(
         NumbersDialog(
             element = selected,
             device = device,
+            controlScale = controlScale,
             portrait = portrait,
             onDismiss = { typingNumbers = false },
             onApply = { updated ->
@@ -909,6 +913,7 @@ private fun ControlKind.family(): ControlFamily = when (this) {
 private fun ControlMenu(
     element: LayoutElement,
     device: LayoutSurface,
+    controlScale: Float,
     landscape: Boolean,
     copied: ControlStyle?,
     onSize: () -> Unit,
@@ -933,7 +938,7 @@ private fun ControlMenu(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             KButton(onClick = onSize, modifier = Modifier.weight(1f)) { Text("values") }
             KOutlinedButton(
-                onClick = { onStep(element.withNextAnchor(portrait, device)) },
+                onClick = { onStep(element.withNextAnchor(portrait, device, controlScale.toDouble())) },
                 modifier = Modifier.weight(1f),
             ) { Text(element.placementFor(portrait).anchor.wireName) }
         }
@@ -1556,6 +1561,7 @@ private fun GridTools(
 private fun NumbersDialog(
     element: LayoutElement,
     device: LayoutSurface,
+    controlScale: Float,
     portrait: Boolean,
     onDismiss: () -> Unit,
     onApply: (LayoutElement) -> Unit,
@@ -1570,6 +1576,19 @@ private fun NumbersDialog(
     var height by remember { mutableStateOf("%.2f".format(current.height)) }
     var problem by remember { mutableStateOf("") }
 
+    // The body scrolls, and the message is the last thing in it. On a landscape phone that put it
+    // below the fold, so a refused value looked like a button that did nothing — reported as
+    // pressing Apply two or three times and then scrolling to find out why.
+    val scroll = rememberScrollState()
+    LaunchedEffect(problem) {
+        if (problem.isNotBlank()) scroll.animateScrollTo(scroll.maxValue)
+    }
+
+    // The document is the pad at full size and the size setting is applied on top of it, so
+    // anything that reasons about where a control *is* has to apply the setting too. Dragging does.
+    // This did not, and it offered numbers it had checked on a screen nobody was looking at.
+    val scale = controlScale.toDouble().coerceAtLeast(0.01)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(element.id) },
@@ -1578,7 +1597,7 @@ private fun NumbersDialog(
             // phone put width and height below the fold with no way to reach them, which is a
             // feature that works and cannot be used.
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
@@ -1641,15 +1660,15 @@ private fun NumbersDialog(
                     rotationDegrees = current.rotationDegrees,
                 )
                 val shape = element.effectiveShapeFor(portrait)
-                if (!wanted.resolve(device).shapedAs(shape).isWithin(device)) {
+                if (!wanted.scaledBy(scale).resolve(device).shapedAs(shape).isWithin(device)) {
                     // The size check names the two numbers it will accept. This one used to say
                     // only that the control was off the screen, which tells the user they are
                     // wrong without telling them what right looks like — the project owner asked
                     // for the same treatment here.
-                    problem = "That puts the control off the screen. At this size, from the " +
-                        "${wanted.anchor.wireName} anchor, " +
-                        offsetLimit(wanted, device, shape, horizontal = true) + " and " +
-                        offsetLimit(wanted, device, shape, horizontal = false) + "."
+                    problem = "That puts the control off the screen at " +
+                        "${(scale * 100).roundToInt()}%. From the ${wanted.anchor.wireName} " +
+                        "anchor, " + offsetLimit(wanted, device, shape, scale, horizontal = true) +
+                        " and " + offsetLimit(wanted, device, shape, scale, horizontal = false) + "."
                     return@KButton
                 }
                 val candidate = Placement.of(
@@ -1739,7 +1758,11 @@ private fun LayoutElement.taller(delta: Double, portrait: Boolean): LayoutElemen
  * different pair of numbers at every size; the document is the thing being edited, and at the
  * default size — which is now full size — the two answers are the same one.
  */
-private fun LayoutElement.withNextAnchor(portrait: Boolean, surface: LayoutSurface): LayoutElement {
+private fun LayoutElement.withNextAnchor(
+    portrait: Boolean,
+    surface: LayoutSurface,
+    scale: Double,
+): LayoutElement {
     // Only the corners and edges a control is ever pinned to. The centre is excluded on purpose:
     // a control anchored to the middle of the screen is one no thumb can reach while holding a
     // phone, and offering it here would be offering a mistake.
@@ -1749,11 +1772,10 @@ private fun LayoutElement.withNextAnchor(portrait: Boolean, surface: LayoutSurfa
     )
     val current = placementFor(portrait)
     val next = order[(order.indexOf(current.anchor).coerceAtLeast(0) + 1) % order.size]
-    val here = current.resolve(surface)
-    return withPlacementFor(
-        portrait,
-        current.copy(anchor = next).centeredAt(surface, here.centerX, here.centerY).rounded(),
-    )
+
+    // The arithmetic that keeps the control still lives in the domain, where it can be tested and
+    // where there is one copy of it. This screen only decides which anchor is next.
+    return withPlacementFor(portrait, current.reAnchored(surface, next, scale).rounded())
 }
 
 /**
@@ -1852,6 +1874,7 @@ private fun offsetLimit(
     wanted: Placement,
     device: LayoutSurface,
     shape: ControlShape,
+    scale: Double,
     horizontal: Boolean,
 ): String {
     val name = if (horizontal) "offsetX" else "offsetY"
@@ -1863,7 +1886,7 @@ private fun offsetLimit(
         val value = round(-Placement.MAX_OFFSET + steps * 0.01)
         val rect = (
             if (horizontal) wanted.copy(offsetX = value) else wanted.copy(offsetY = value)
-            ).resolve(device).shapedAs(shape)
+            ).scaledBy(scale).resolve(device).shapedAs(shape)
         val fits = if (horizontal) {
             rect.left >= device.insetLeft && rect.right <= device.insetLeft + device.usableWidth
         } else {

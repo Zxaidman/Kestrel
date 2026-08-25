@@ -87,11 +87,28 @@ public class LayoutRepository(private val store: DocumentStore) {
         if (id.isBuiltIn) {
             return Outcome.Failure(ConfigurationError.ImmutableDocument(id.value))
         }
-        return store.write(
-            StoreFolder.LAYOUTS,
-            fileName(id.value),
-            Json.write(ControllerLayoutWriter.write(layout)),
-        )
+
+        val text = Json.write(ControllerLayoutWriter.write(layout))
+
+        // Never write a file Kestrel cannot itself open.
+        //
+        // The reader is strict on purpose, because an imported document is untrusted input — and
+        // that strictness is worth nothing if the writer can put something past it. A round trip
+        // through the same parse and the same validation an imported file goes through costs one
+        // parse per save and turns "the file is corrupt" from a fault a user discovers at the next
+        // launch into a refusal they see while the work is still on screen.
+        //
+        // A layout was reported corrupt after a save in `0.0.39-dev` (`BUG-49`). The file was
+        // deleted before it could be read, so this does not fix a known fault — it closes the
+        // family the fault could have belonged to, and it says nothing about a layout that parses
+        // perfectly well and is simply arranged wrong.
+        // The reader's own typed error is returned unchanged rather than wrapped in a new one: it
+        // already names the field and the reason, and a second error type saying "something else
+        // said no" is a layer that only makes the real answer harder to read.
+        val readBack = Json.parse(text).flatMap { ControllerLayoutReader.read(it) }
+        if (readBack is Outcome.Failure) return readBack
+
+        return store.write(StoreFolder.LAYOUTS, fileName(id.value), text)
     }
 
     /**
