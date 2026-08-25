@@ -79,7 +79,19 @@ public data class KestrelSettings(
          */
         public const val DEFAULT_CONTROL_SCALE: Double = 1.00
         public const val MIN_CONTROL_SCALE: Double = 0.50
-        public const val MAX_CONTROL_SCALE: Double = 2.00
+        /**
+         * As far as the size setting goes, and it is deliberately the same as the default.
+         *
+         * The project owner's judgement, and the measurement agrees with it: 200% was overdoing it,
+         * and the shipped arrangement is clean to **1.03** — above that `R3` meets `Start`, and past
+         * about 1.2 the left column runs into itself. A maximum the shipped layout cannot survive is
+         * a maximum that ships a broken pad to anyone who drags the slider up.
+         *
+         * The cost, stated: the slider only goes down from the default. Moving `R3` about 0.02
+         * further from `Start` would raise this to roughly 1.15, and that is the project owner's
+         * arrangement to change rather than this side's.
+         */
+        public const val MAX_CONTROL_SCALE: Double = 1.00
     }
 }
 
@@ -231,7 +243,8 @@ public object SettingsDocument {
             "idle" to ConfigNode.Obj(
                 linkedMapOf(
                     "enabled" to ConfigNode.Bool(settings.idle.enabled),
-                    "seconds" to ConfigNode.Num(settings.idle.seconds.toDouble()),
+                    "controlsSeconds" to ConfigNode.Num(settings.idle.controlsSeconds.toDouble()),
+                    "toggleSeconds" to ConfigNode.Num(settings.idle.toggleSeconds.toDouble()),
                 )
             ),
             "editor" to ConfigNode.Obj(
@@ -361,12 +374,23 @@ public object SettingsDocument {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value
                 },
-                seconds = when (
+                controlsSeconds = when (
                     val v = optionalNumber(
-                        idle, "seconds",
+                        idle, "controlsSeconds",
                         IdlePreferences.MIN_SECONDS.toDouble(),
                         IdlePreferences.MAX_SECONDS.toDouble(),
-                        defaults.seconds.toDouble(), "idle",
+                        defaults.controlsSeconds.toDouble(), "idle",
+                    )
+                ) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value.toInt()
+                },
+                toggleSeconds = when (
+                    val v = optionalNumber(
+                        idle, "toggleSeconds",
+                        IdlePreferences.MIN_SECONDS.toDouble(),
+                        IdlePreferences.MAX_SECONDS.toDouble(),
+                        defaults.toggleSeconds.toDouble(), "idle",
                     )
                 ) {
                     is Outcome.Failure -> return v

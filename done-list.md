@@ -532,76 +532,110 @@ it could be dragged off the screen, which is `BUG-35`.
 
 ---
 
-## Built, awaiting confirmation — `0.0.35-dev`
+### `CRIT-6` — 100% is what 80% was — **closed `0.0.35-dev`**
 
-### `CRIT-6` — 100% is what 80% was, and the default is the project owner's layout
+The pad came back the right size after the migration, the range behaved, and the project owner's
+arrangement is the shipped default. **Measured.**
 
-The arrangement sent two rounds ago could not ship as a default because it overlapped itself above
-89% while the size slider ran to 100%. Rather than move the layout, the project owner moved the
-scale: **what was 80% is 100%, and the range is 50% to 200%.**
-
-Every number in the shipped layout is multiplied by 0.80 and the arrangement is theirs, from the
-file they sent — both orientations, with the shapes stripped from the stick and the pad, which
-ignore them.
-
-**What the shipped layout now promises**, and it is a smaller promise than before: *no overlap and
-nothing off the screen at the default size and at every size below it.* At 200% a pad is being
-deliberately enlarged and what it runs into is the user's business. Requiring a layout to stay clear
-of itself at twice its size would rule out every arrangement worth shipping.
-
-**Old settings files are converted.** They hold sizes in the old scheme, and reading an old `0.80`
-as a new `0.80` would shrink somebody's pad by a fifth without saying so. The file carries a
-`scaleScheme` marker; a file without one is old by definition, is validated against the range it was
-written under — so its author is told about the limit that applied to them — and then converted.
-Four unit tests cover it, including that an old `0.80` comes back as `1.00`.
-
-**How it is known.** The layout passes every rule the shipped one has to keep, at 50%, 75% and 100%.
-Unverified on a device.
+**And 200% was too much**, which the project owner said and the measurement agreed with — the
+shipped layout is clean only to 1.03. That is `CRIT-8`.
 
 ---
 
-### `BUG-37` — The pad's stick shows what is being sent
+### `CRIT-7` + `BUG-38` — The sizing proposal, and the anchor that moved — **closed `0.0.35-dev`**
 
-`BUG-34` was right and incomplete. The shaping did start reaching the game — the project owner
-confirmed it in play — and the **picture** did not change, because the pad drew its knob under the
-thumb and sent the shaped value. So the one place somebody looks while tuning a dead zone was the
-one place the dead zone never appeared, while the diagnostics screen's own stick showed it plainly.
+Changing a control's anchor keeps its position now. **Measured.** The rest of the proposal was
+assessed rather than built: its nine anchor points already existed, and its §2 and §4.1 contradict
+each other — a layout stored in pixels moves or stretches on the next device, which is the failure
+§4.1 exists to prevent. What survives as work is `FEAT-45` and `FEAT-46`.
 
-**Two renderers of the same thing disagreeing. Third time.** The knob now draws the shaped value: a
-knob that does not leave the centre until the dead zone is passed *is* the dead zone, visible.
+---
+
+### `BUG-34` + `BUG-37` — The stick shaping, felt and seen — **closed `0.0.35-dev`**
+
+*"now it's feelable."* Two bugs and one symptom: the overlay was never told about a profile change,
+and once it was, the knob still drew the raw finger while sending the shaped value. Both fixed;
+**measured** on the device and in a game.
+
+---
+
+### `FEAT-43`, `FEAT-44`, `BUG-32`, `BUG-35`, `BUG-36`, `FEAT-37` — **closed `0.0.35-dev`**
+
+The anchor dot, the pad that dims and then goes, no shape where a shape does nothing, the block
+clamped to the screen, the nine-part lines on the grid. All **measured** — with two remainders the
+project owner found: four of the nine dots are invisible on a rounded screen (`BUG-40`) and the
+block shared one position between orientations (`BUG-41`).
+
+---
+
+---
+
+## Built, awaiting confirmation — `0.0.36-dev`
+
+### `CRIT-8` — The maximum is what the shipped layout survives
+
+Measured on four screen shapes: the shipped arrangement is clean to **1.03**. The maximum is
+**1.00**, the same as the default.
+
+From 1.04 to about 1.15 the only pair that touches is `stick.right.press` against `menu.start`; past
+about 1.2 the left column joins in. **The cost is that the size slider now only goes down.** Moving
+`R3` about 0.02 further from `Start` would raise the ceiling to roughly 1.15 — the project owner's
+arrangement to change, not this side's.
 
 Unverified on the device.
 
 ---
 
-### `FEAT-44` — The pad gets out of the way on its own
+### `BUG-39` — The menu is actually wider this time
 
-Untouched for the set interval, the controls dim; for it again, they go, and the toggle brings them
-back. A switch turns it off and a slider sets the interval from 2s to 120s. Everything is released
-on the way out, which is the same path `hideControls` has always taken — a control that vanishes
-mid-press leaves nothing behind able to let go of it.
+There was never any difference to notice. The constant went 230 → 300; the round after rewrote the
+file's top half and restored 250; the round after that replaced "300" with "380", **matched nothing,
+changed nothing, said nothing** — and it was written up as shipped.
 
-**The toggle only ever dims, which is a deliberate deviation from what was asked.** It is the way
-out. A user who cannot make the controls go away has lost their phone until they reboot it, which
-has happened here once, and a way out that hides itself — or that costs a tap to wake before it will
-work — is that same fault with a timer attached. It fades, and it acts on the first touch.
+**That is `BUG-31` happening a second time, in the entry where the rule was written down.** A
+search-and-replace that finds nothing is a silent failure, not a no-op.
 
-Unverified on the device.
+**What changed as a result:** these edits now fail loudly when the text they are replacing is not
+there, rather than depending on remembering to check. A rule that needs discipline every time is a
+rule that will be broken again.
 
----
-
-### `FEAT-43` — A dot on the anchor
-
-An offset is a distance from a point; the point was named in words and drawn nowhere. Unverified.
+Unverified on the device — 380dp this time, and verified in the file.
 
 ---
 
-### `BUG-35`, `BUG-36`, `BUG-32`, `BUG-34`, `FEAT-37` — the smaller ones
+### `BUG-40` — The anchor dot is inset
 
-The block is clamped to the screen. The nine-part lines snap to the nearest grid line, because two
-sets of lines that nearly agree read as a mistake. The shape choice is gone for sticks and pads. The
-analog profile reaches the pad already on screen. The menu is wider again. All unverified on the
-device except `BUG-34`, which was confirmed working in a game and incompletely — see `BUG-37`.
+A corner anchor sits exactly at the corner of the display and almost every phone rounds that off, so
+four of the nine dots were drawn on glass that does not exist. Inset by its own size: still
+unmistakably at its corner, always visible. Unverified.
+
+---
+
+### `BUG-41` — The block remembers where it was put, per orientation
+
+Moving it out of the way in landscape put it in the way upright. Unverified.
+
+---
+
+### `FEAT-47` — Two timers
+
+How long a pad waits before getting out of the way, and how long a small button in a corner sits at
+full strength, are different questions. One number for both made the second hostage to the first.
+Unverified.
+
+---
+
+### `FEAT-48` — Windows are not a mode any more
+
+The boxes are drawn faintly under the pad **at all times**, and which window a control is in moved
+into its long-press menu. The mode switch is gone.
+
+The project owner's reasoning is the right reasoning: a window was a mode you had to be *in* to see,
+so the way to find out that dragging a control across the screen had turned its window into a lid
+over the whole display was to go looking for it. Drawn always, it is simply visible while it happens.
+
+The settings sheet keeps the read-out of every window and its share of the screen — the one view
+that cannot be had at a single control. Unverified on the device.
 
 ---
 

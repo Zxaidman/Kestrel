@@ -371,7 +371,8 @@ public class ControllerOverlay(
 
     /** Called by anything the user does to the pad. Restores it if it had faded or gone. */
     internal fun touched() {
-        val wasIdle = android.os.SystemClock.uptimeMillis() - lastTouch >= idleAfterMs()
+        val wasIdle = android.os.SystemClock.uptimeMillis() - lastTouch >=
+            minOf(idleAfterMs(), toggleAfterMs())
         lastTouch = android.os.SystemClock.uptimeMillis()
         if (wasIdle) applyIdle()
     }
@@ -379,7 +380,9 @@ public class ControllerOverlay(
     private fun idleSettings() =
         io.github.zxaidman.kestrel.platform.settings.AppSettings.current.value.idle
 
-    private fun idleAfterMs(): Long = idleSettings().seconds.toLong() * 1000L
+    private fun idleAfterMs(): Long = idleSettings().controlsSeconds.toLong() * 1000L
+
+    private fun toggleAfterMs(): Long = idleSettings().toggleSeconds.toLong() * 1000L
 
     private fun applyIdle() {
         val settings = idleSettings()
@@ -391,7 +394,7 @@ public class ControllerOverlay(
         val quiet = android.os.SystemClock.uptimeMillis() - lastTouch
         val step = idleAfterMs()
 
-        toggle?.alpha = if (quiet >= step) IDLE_ALPHA else 1f
+        toggle?.alpha = if (quiet >= toggleAfterMs()) IDLE_ALPHA else 1f
 
         if (!controlsVisible) return
         if (quiet >= step * 2) {

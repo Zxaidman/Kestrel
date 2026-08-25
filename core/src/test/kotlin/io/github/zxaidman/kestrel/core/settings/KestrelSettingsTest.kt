@@ -123,10 +123,10 @@ class KestrelSettingsTest {
         val settings = value(
             parse(
                 """{"schemaVersion":1,"type":"settings","id":"user.settings","name":"S",
-                   "scaleScheme": 2, "controlScale": 1.60}"""
+                   "scaleScheme": 2, "controlScale": 0.90}"""
             )
         )
-        assertEquals(1.60, settings.controlScale, 1e-9)
+        assertEquals(0.90, settings.controlScale, 1e-9)
     }
 
     @Test

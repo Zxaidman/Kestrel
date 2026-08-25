@@ -13,6 +13,39 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.36-dev` — Windows Stop Being A Mode, And A Change That Never Shipped
+
+**The menu was never wider.** The constant went 230 → 300; the round after rewrote the file's top
+half and put 250 back; the round after that replaced "300" with "380", matched nothing, changed
+nothing, reported nothing — and it was written up as shipped. **That is the same failure as
+`BUG-31`, in the entry where the rule against it was written down.** The rule was right and
+remembering it was not enough, so these edits now fail loudly when the text they are replacing is
+not there.
+
+**Windows stop being a mode.** The project owner's reasoning: a window was something you had to
+switch into to see, so the way to discover that dragging a control across the screen had turned its
+window into a lid over the whole display was to go looking for it. The boxes are drawn faintly under
+the pad at all times now, and which window a control is in moved into its long-press menu beside
+everything else done to one control. The settings sheet keeps the read-out of every window and its
+share of the screen — the one view that cannot be had at a single control.
+
+**The maximum size comes down to what the shipped layout survives.** 200% was overdoing it, and the
+measurement agrees: the arrangement is clean to 1.03 on four screen shapes. The maximum is 1.00, the
+same as the default. From 1.04 to about 1.15 the only pair that touches is `R3` against `Start`;
+past 1.2 the left column joins in. **The cost is that the size slider only goes down now** — moving
+`R3` about 0.02 further from `Start` would give it somewhere to go, and that is the project owner's
+arrangement to change.
+
+Also: the anchor dot is inset, because a corner anchor sits exactly where almost every phone rounds
+the glass off and four of the nine dots were being drawn on screen that is not there; the floating
+block remembers a position per orientation, since moving it out of the way in landscape put it in
+the way upright; and the idle fade has two intervals, because how long a pad waits and how long a
+small button in a corner waits are different questions.
+
+**Sixty-one items `done`**, including the scale scheme, the shipped layout, and the stick shaping
+that can now be both felt and seen.
+
+
 ### `0.0.35-dev` — 100% Means What The Project Owner Set
 
 **The scale moved instead of the layout.** An arrangement that overlapped itself above 89% could not

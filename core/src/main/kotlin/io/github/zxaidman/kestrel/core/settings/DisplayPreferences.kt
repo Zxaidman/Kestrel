@@ -146,12 +146,16 @@ public data class IdlePreferences(
     public val enabled: Boolean = true,
 
     /**
-     * Seconds of no touch before the first stage.
+     * Seconds of no touch before the controls fade, and again before they go.
      *
-     * The same number is used twice: the controls fade after it, and go after it again. One number
-     * is one thing to explain and one thing to set.
+     * Separate from [toggleSeconds] because they are answers to different questions: how long a pad
+     * should wait before getting out of the way, and how long a small button in a corner should sit
+     * at full strength. One number for both made the second one hostage to the first.
      */
-    public val seconds: Int = 5,
+    public val controlsSeconds: Int = 5,
+
+    /** Seconds of no touch before the toggle dims. It only ever dims — see the note above. */
+    public val toggleSeconds: Int = 5,
 ) {
     public companion object {
         public const val MIN_SECONDS: Int = 2

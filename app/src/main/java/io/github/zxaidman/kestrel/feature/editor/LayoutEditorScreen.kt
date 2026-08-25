@@ -163,7 +163,6 @@ public fun LayoutEditorScreen(
     var working by remember(layout.header.id) { mutableStateOf(layout) }
     var selectedId by remember(layout.header.id) { mutableStateOf<String?>(null) }
     var dirty by remember(layout.header.id) { mutableStateOf(false) }
-    var mode by remember { mutableStateOf(EditorMode.CONTROLS) }
     var message by remember { mutableStateOf("") }
     // Remembered for the session, not written to settings.json. Somebody who turns edge snapping
     // on wants it on for the arranging they are doing — but it is working state rather than a
@@ -187,7 +186,8 @@ public fun LayoutEditorScreen(
     // way. It was pinned to the middle, which is the one place a pad never is — right up until a
     // control is dragged there, and then it is on top of the thing being edited with no way to move
     // either of them.
-    var panel by remember { mutableStateOf(Offset.Zero) }
+    var panelLandscape by remember { mutableStateOf(Offset.Zero) }
+    var panelPortrait by remember { mutableStateOf(Offset.Zero) }
     var panelSize by remember { mutableStateOf(IntSize.Zero) }
     var panelHidden by remember { mutableStateOf(false) }
     var panelMenu by remember { mutableStateOf(false) }
@@ -203,6 +203,11 @@ public fun LayoutEditorScreen(
     // orientation the phone is in — the editor turns the phone to work on the other one rather than
     // drawing a small picture of it, so "the orientation on screen" is always the honest answer.
     val portrait = device.heightPx > device.widthPx
+
+    // Where the block was put, per orientation. One position for both meant that moving it out of
+    // the way in landscape put it in the way upright — the pad is in a different place in each,
+    // which is the whole reason a layout has two arrangements.
+    val panel = if (portrait) panelPortrait else panelLandscape
     val controlScale = AppSettings.current.value.let {
         if (portrait) it.controlScalePortrait else it.controlScale
     }.toFloat()
@@ -215,7 +220,6 @@ public fun LayoutEditorScreen(
             controlScale = controlScale,
             portrait = portrait,
             layout = working,
-            mode = mode,
             selectedId = selectedId,
             dimExcept = menuFor,
             gridUnit = gridUnit,
@@ -261,10 +265,11 @@ public fun LayoutEditorScreen(
                                 // Exit go with it.
                                 val limitX = max(0f, (rootSize.width - panelSize.width) / 2f)
                                 val limitY = max(0f, (rootSize.height - panelSize.height) / 2f)
-                                panel = Offset(
+                                val moved = Offset(
                                     (panel.x + dragged.x).coerceIn(-limitX, limitX),
                                     (panel.y + dragged.y).coerceIn(-limitY, limitY),
                                 )
+                                if (portrait) panelPortrait = moved else panelLandscape = moved
                             }
                         }.pointerInput(Unit) {
                             detectTapGestures(onLongPress = { panelMenu = true })
@@ -388,7 +393,7 @@ public fun LayoutEditorScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = {
-                        panel = Offset.Zero
+                        if (portrait) panelPortrait = Offset.Zero else panelLandscape = Offset.Zero
                         panelMenu = false
                     }) { Text("Back to the middle") }
                 },
@@ -396,18 +401,7 @@ public fun LayoutEditorScreen(
         }
 
         val menuElement = working.element(menuFor ?: "")
-        if (menuElement != null && !toolsOpen && mode == EditorMode.WINDOWS) {
-            WindowMenu(
-                layout = working,
-                element = menuElement,
-                landscape = !portrait,
-                onChange = { updated ->
-                    working = working.replacing(updated)
-                    dirty = true
-                },
-                onDismiss = { menuFor = null },
-            )
-        } else if (menuElement != null && !toolsOpen) {
+        if (menuElement != null && !toolsOpen) {
             ControlMenu(
                 element = menuElement,
                 device = device,
@@ -423,6 +417,17 @@ public fun LayoutEditorScreen(
                 },
                 onStep = { updated ->
                     working = working.replacing(updated)
+                    dirty = true
+                },
+                onGroup = { step ->
+                    val options = working.windowOptions()
+                    working = working.replacing(
+                        if (step == 0) {
+                            menuElement.copy(group = null)
+                        } else {
+                            menuElement.withGroupStep(options, step)
+                        }
+                    )
                     dirty = true
                 },
                 portrait = portrait,
@@ -446,8 +451,6 @@ public fun LayoutEditorScreen(
                 landscape = landscape,
                 onDismiss = { toolsOpen = false },
             ) {
-                ModeSwitch(mode = mode, onMode = { mode = it })
-
                 WindowSummary(
                     layout = working,
                     device = device,
@@ -524,14 +527,6 @@ public fun LayoutEditorScreen(
     }
 }
 
-/** Which of the two things on this screen is being edited. */
-public enum class EditorMode(public val label: String) {
-    /** Where a control sits, how big it is, what shape it is. */
-    CONTROLS("Controls"),
-
-    /** Which controls share a window — and therefore how much of the screen the pad takes away. */
-    WINDOWS("Windows"),
-}
 
 /**
  * Grid steps, in the unit the document itself uses: a fraction of the screen's shorter side.
@@ -784,6 +779,7 @@ private fun ControlMenu(
     onSize: () -> Unit,
     onShape: (ControlShape) -> Unit,
     onStep: (LayoutElement) -> Unit,
+    onGroup: (Int) -> Unit,
     portrait: Boolean,
     onCopy: () -> Unit,
     onPaste: () -> Unit,
@@ -830,6 +826,19 @@ private fun ControlMenu(
                 enabled = true,
                 onShape = onShape,
             )
+        }
+
+        // Which window this control is in, at the control. It used to be a mode of its own, which
+        // meant the setting with the largest effect on how much of the screen the pad takes away
+        // was two taps and a mode away from the control it belongs to.
+        Text("window: " + (element.group ?: "its own"), style = MaterialTheme.typography.labelMedium)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            KButton(onClick = { onGroup(-1) }) { Text("◀") }
+            KButton(onClick = { onGroup(1) }) { Text("▶") }
+            KButton(onClick = { onGroup(0) }) { Text("its own") }
         }
 
         FlowRow(
@@ -898,40 +907,6 @@ private fun MenuAt(
     }
 }
 
-/**
- * The window options, at the control, in window mode.
- *
- * No copy and no paste, which the project owner asked for and which is right for a reason worth
- * writing down: a group is a name shared between controls, so "copying" one is joining it — and
- * joining it is what stepping through the list already does. A clipboard here would be a second way
- * to do the same thing, with its own state to get out of step.
- */
-@Composable
-private fun WindowMenu(
-    layout: ControllerLayout,
-    element: LayoutElement,
-    landscape: Boolean,
-    onChange: (LayoutElement) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val options = layout.windowOptions()
-    MenuAt(landscape = landscape, onDismiss = onDismiss) {
-        MenuHeader(title = element.id, detail = "window", onDismiss = onDismiss)
-        Text(
-            text = "in: " + (element.group ?: "own window"),
-            style = MaterialTheme.typography.bodyMedium,
-            fontFamily = FontFamily.Monospace,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            KButton(onClick = { onChange(element.withGroupStep(options, -1)) }) { Text("◀") }
-            KButton(onClick = { onChange(element.withGroupStep(options, 1)) }) { Text("▶") }
-        }
-        KButton(
-            onClick = { onChange(element.copy(group = null)) },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("own window") }
-    }
-}
 
 /**
  * Whose menu this is, said loudly enough to be the answer to that question.
@@ -965,32 +940,10 @@ private fun MenuHeader(title: String, detail: String, onDismiss: () -> Unit) {
     }
 }
 
-private const val MENU_WIDTH = 250
+private const val MENU_WIDTH = 380
 
 // --- the tools -----------------------------------------------------------------------------------
 
-@Composable
-private fun ModeSwitch(mode: EditorMode, onMode: (EditorMode) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        EditorMode.entries.forEach { candidate ->
-            if (candidate == mode) {
-                KButton(onClick = { onMode(candidate) }) { Text(candidate.label) }
-            } else {
-                KOutlinedButton(onClick = { onMode(candidate) }) { Text(candidate.label) }
-            }
-        }
-    }
-    Text(
-        text = when (mode) {
-            EditorMode.CONTROLS -> "Drag a control to move it. Nothing is written until Save."
-            EditorMode.WINDOWS ->
-                "A window is the box around everything in one group. A finger can slide between " +
-                    "controls that share one — and everything else the box covers stops reaching " +
-                    "the game underneath."
-        },
-        style = MaterialTheme.typography.bodySmall,
-    )
-}
 
 /** The selected control in both units at once, which is the only way the two read on one scale. */
 private fun LayoutElement.summary(device: LayoutSurface, portrait: Boolean): String {
@@ -1036,7 +989,8 @@ private fun WindowSummary(
     }
     Text(
         text = "Percentages are of the whole screen. Past a quarter, a window is taking away more " +
-            "than a pad should. Long press a control to change which window it is in.",
+            "than a pad should. The boxes are drawn on the canvas while you work; long press a " +
+            "control to change which one it is in.",
         style = MaterialTheme.typography.bodySmall,
     )
 }
@@ -1120,22 +1074,37 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
         Text("Fade when untouched", style = MaterialTheme.typography.bodyMedium)
     }
     Text(
-        text = "after %d s".format(idle.seconds),
+        text = "controls  %d s".format(idle.controlsSeconds),
         style = MaterialTheme.typography.bodySmall,
         fontFamily = FontFamily.Monospace,
     )
     Slider(
         enabled = idle.enabled,
-        value = idle.seconds.toFloat(),
+        value = idle.controlsSeconds.toFloat(),
         onValueChange = { v ->
-            AppSettings.update { it.copy(idle = it.idle.copy(seconds = v.roundToInt())) }
+            AppSettings.update { it.copy(idle = it.idle.copy(controlsSeconds = v.roundToInt())) }
         },
         onValueChangeFinished = onPersist,
         valueRange = IdlePreferences.MIN_SECONDS.toFloat()..IdlePreferences.MAX_SECONDS.toFloat(),
     )
     Text(
-        text = "The controls dim after that long untouched and go after it again. The K button " +
-            "only ever dims — it is the way out, and a way out that hides itself is not one.",
+        text = "K button  %d s".format(idle.toggleSeconds),
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
+    )
+    Slider(
+        enabled = idle.enabled,
+        value = idle.toggleSeconds.toFloat(),
+        onValueChange = { v ->
+            AppSettings.update { it.copy(idle = it.idle.copy(toggleSeconds = v.roundToInt())) }
+        },
+        onValueChangeFinished = onPersist,
+        valueRange = IdlePreferences.MIN_SECONDS.toFloat()..IdlePreferences.MAX_SECONDS.toFloat(),
+    )
+    Text(
+        text = "The controls dim after their interval and go after it again. The K button dims " +
+            "after its own — and only ever dims: it is the way out, and a way out that hides " +
+            "itself is not one.",
         style = MaterialTheme.typography.bodySmall,
     )
 
@@ -1645,7 +1614,6 @@ private fun EditorCanvas(
     controlScale: Float,
     portrait: Boolean,
     layout: ControllerLayout,
-    mode: EditorMode,
     selectedId: String?,
     /** While a menu is open, everything but this control is darkened. */
     dimExcept: String?,
@@ -1660,7 +1628,6 @@ private fun EditorCanvas(
     // keyed on anything that changes during a drag restarts mid-gesture, which cancels the drag —
     // so the keys stay still and the values are looked up fresh.
     val liveLayout by rememberUpdatedState(layout)
-    val liveMode by rememberUpdatedState(mode)
     val liveGrid by rememberUpdatedState(gridUnit)
     val liveSnapGrid by rememberUpdatedState(snapToGrid)
     val liveSnapEdges by rememberUpdatedState(snapToEdges)
@@ -1761,7 +1728,6 @@ private fun EditorCanvas(
                     },
                 ) { change, _ ->
                     change.consume()
-                    if (liveMode != EditorMode.CONTROLS) return@detectDragGestures
                     val id = dragging ?: return@detectDragGestures
                     val element = liveLayout.element(id) ?: return@detectDragGestures
                     val fitted = fit()
@@ -1809,9 +1775,10 @@ private fun EditorCanvas(
 
         val placed = layout.elements.map { it.id to rectOf(fitted, it) }
         @Suppress("UNUSED_EXPRESSION") controlScale
-        if (mode == EditorMode.WINDOWS) {
-            drawWindows(fitted, Clustering.group(layout, placed), selectedId)
-        }
+        // Always, and behind everything. A window was a mode you had to be in to see, so the way to
+        // find out that dragging a control across the screen had turned its window into a lid was
+        // to go looking. Drawn faintly under the pad, it is simply visible while it happens.
+        drawWindows(fitted, Clustering.group(layout, placed), selectedId)
         layout.elements.forEachIndexed { index, element ->
             drawControl(fitted, element, livePortrait, placed[index].second, element.id == selectedId)
         }
@@ -2042,8 +2009,15 @@ private fun DrawScope.drawThirds(fit: Fit, gridUnit: Double) {
 
 /** Where the selected control's offsets are measured from, as a dot you can see. */
 private fun DrawScope.drawAnchor(fit: Fit, anchor: Anchor) {
-    val x = fit.left + fit.width * anchor.originX.toFloat()
-    val y = fit.top + fit.height * anchor.originY.toFloat()
+    // Pulled in from the edge by its own size. A corner anchor sits exactly at the corner of the
+    // display, and almost every phone rounds that corner off — so four of the nine dots were being
+    // drawn on glass that is not there. Inset, the dot is still unmistakably at its corner and is
+    // always visible.
+    val inset = 16f
+    val x = (fit.left + fit.width * anchor.originX.toFloat())
+        .coerceIn(fit.left + inset, fit.left + fit.width - inset)
+    val y = (fit.top + fit.height * anchor.originY.toFloat())
+        .coerceIn(fit.top + inset, fit.top + fit.height - inset)
     val red = Color(0xFFE03A3A)
     drawCircle(red, radius = 9f, center = Offset(x, y))
     drawCircle(Color(0xFF0B0D11), radius = 9f, center = Offset(x, y), style = Stroke(width = 2f))
