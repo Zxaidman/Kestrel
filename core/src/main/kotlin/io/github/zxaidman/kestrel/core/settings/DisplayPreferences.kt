@@ -143,16 +143,29 @@ public data class EditorPreferences(
  * timer attached.
  */
 public data class IdlePreferences(
-    public val enabled: Boolean = true,
+    /** Whether the controls fade and then go. */
+    public val controlsEnabled: Boolean = true,
+
+    /** Whether the toggle fades. Separate, because they are separate things to want. */
+    public val toggleEnabled: Boolean = true,
 
     /**
-     * Seconds of no touch before the controls fade, and again before they go.
+     * Seconds of no touch before the controls fade.
      *
      * Separate from [toggleSeconds] because they are answers to different questions: how long a pad
      * should wait before getting out of the way, and how long a small button in a corner should sit
      * at full strength. One number for both made the second one hostage to the first.
      */
-    public val controlsSeconds: Int = 5,
+    public val controlsFadeSeconds: Int = 5,
+
+    /**
+     * Seconds of no touch before the controls go entirely.
+     *
+     * Its own number rather than twice the first. Fading and disappearing are different amounts of
+     * getting out of the way, and somebody who wants a long faded state before anything vanishes
+     * should be able to say so.
+     */
+    public val controlsHideSeconds: Int = 10,
 
     /** Seconds of no touch before the toggle dims. It only ever dims — see the note above. */
     public val toggleSeconds: Int = 5,

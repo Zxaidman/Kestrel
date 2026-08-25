@@ -13,6 +13,42 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.37-dev` — A Wrong Number, Corrected
+
+**Last round's estimate was wrong and a decision was made on it.** Moving `R3` was said to raise the
+size ceiling to about 1.15. Measured, it is **1.05**: the estimate was arithmetic on the layout before
+it was rounded to two decimals, and it checked whether controls overlapped without checking whether
+they stayed on the screen. `R3` has moved as asked and the maximum is 1.05.
+
+Why it cannot go much further is worth knowing: `R3` and `Start` are on the same edge, one anchored
+to the bottom and one to the top, so **growing the pad brings them together** however far apart they
+are drawn at the default size. Another 0.02 buys 1.07 and then `R3` meets `R2`.
+
+**The floating block did not drag at all**, and it was the fix beside it that broke it: giving it a
+position per orientation made that position a value derived from two states, and a drag gesture keyed
+on neither captured the position from when the drag began. The same trap the canvas's own drag was
+written to avoid, with the note explaining why a few hundred lines away in the same file.
+
+**A dot cannot mark a corner on a phone that rounds its corners off.** Four of the nine anchor dots
+were being drawn on glass that is not there, and a bigger inset only moves the dot somewhere slightly
+wrong. The ninth of the screen the anchor belongs to is lit instead — faintly, and under the controls,
+because a hint that obscures the thing it is about is worse than no hint.
+
+**A control can no longer be dragged off the screen.** It used to be allowed off, with a warning and
+a button to bring it back: a fault offered, then reported, then undone. This reverses a position
+stated here more than once, and the reversal is right — "say what is true rather than overrule the
+person" is about what a *file* may contain, not about what a *drag* may do.
+
+Also: the control menu is draggable like the block, for the same reason — both open in the middle,
+which is where a pad never is until a control is dragged there. Sizes in the editor stop at 0.06 and
+0.60 of the shorter side, while the file's own 0.01 and 2.0 stay, because refusing to open a layout
+over a matter of taste is worse than showing what it says. And the idle behaviour becomes four
+settings: the controls fade and hide on separate intervals, and the controls and the toggle each have
+their own switch.
+
+**Sixty-seven items `done`.**
+
+
 ### `0.0.36-dev` — Windows Stop Being A Mode, And A Change That Never Shipped
 
 **The menu was never wider.** The constant went 230 → 300; the round after rewrote the file's top

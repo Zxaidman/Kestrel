@@ -52,13 +52,13 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.36-dev`
+## State of the queue — build `0.0.37-dev`
 
 | Phase | Items |
 | --- | --- |
-| `done` | sixty-one, including `CRIT-5`, `CRIT-6`, `CRIT-7` and `FEAT-15` |
+| `done` | sixty-seven, including `CRIT-5`–`CRIT-8` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
-| `testing` | `CRIT-8`, `BUG-39`–`BUG-41`, `FEAT-47`, `FEAT-48` |
+| `testing` | `CRIT-9`, `BUG-42`, `BUG-43`, `FEAT-49`–`FEAT-52` |
 | `building` | — |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
@@ -341,7 +341,7 @@ somebody will trip over without knowing why.
 
 ### `BUG-39` — The menu width change never shipped
 
-**Phase:** `testing` — built in `0.0.36-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.35-dev`. *"still no difference notice on landscape view menu
 width."*
 
@@ -360,7 +360,7 @@ these edits are made rather than something to remember.
 
 ### `BUG-40` — Four of the nine anchor dots were on glass that is not there
 
-**Phase:** `testing` — built in `0.0.36-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.35-dev`. *"most device including mine is rounded corner so no
 corner red dot is visible."*
 
@@ -371,7 +371,7 @@ off. The dot is drawn inset by its own size — still unmistakably at its corner
 
 ### `BUG-41` — The floating block had one position for two orientations
 
-**Phase:** `testing` — built in `0.0.36-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"make it so in both view it works separately."*
 
 Moving it out of the way in landscape put it in the way upright. The pad is in a different place in
@@ -381,7 +381,7 @@ each — which is the whole reason a layout has two arrangements — so the bloc
 
 ### `FEAT-47` — Two timers, because they are two questions
 
-**Phase:** `testing` — built in `0.0.36-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"keep the K button setting and gamepad setting different for timeout."*
 
 How long a pad should wait before getting out of the way, and how long a small button in a corner
@@ -392,7 +392,7 @@ to the first.
 
 ### `FEAT-48` — Windows are not a mode
 
-**Phase:** `testing` — built in `0.0.36-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"does it need to be seprate setting can we not include it inside layout editing, so
 moving gamepad anchor wrongly user immediately notice the window overlay whole screen and stops."*
 
@@ -409,7 +409,7 @@ that cannot be had at a single control.
 
 ### `CRIT-8` — The maximum is lowered to what the shipped layout survives
 
-**Phase:** `testing` — built in `0.0.36-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Decided:** *"200% is overdoing it… we will keep the 100% as new default but lower the max as such
 it would not break atleast default layout."*
 
@@ -427,6 +427,112 @@ go. That is the project owner's arrangement to change, not this side's.
 **The conversion of old settings stays.** The project owner said it is not needed because they will
 use a fresh file — it is already written and tested, it costs nothing to keep, and the failure it
 prevents is a pad silently a fifth smaller. It can be removed on request.
+
+---
+
+### `BUG-42` — The floating block stopped dragging entirely
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.36-dev`. A regression from `BUG-41` in the same round it was
+built.
+
+Giving the block a position per orientation made `panel` a value derived from two states, and the
+drag gesture is keyed on neither — so what it captured was the position at the moment the gesture
+began, every frame added its delta to that same stale number, and the block did not move at all.
+
+**The same trap the canvas's own drag was written to avoid**, with `rememberUpdatedState`, and the
+note explaining why is a few hundred lines away in the same file. It reads through the same
+mechanism now.
+
+---
+
+### `BUG-43` — A control could still be dragged off the screen
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"so is position button should never go outside screen."*
+
+It was allowed off, with a warning and a button to bring it back. That is a fault offered, then
+reported, then undone — three steps where none was needed. Dragging now keeps a control on the
+screen.
+
+**This reverses a stated position**, and the reversal is right. The old reasoning was `ADR-007`'s
+spirit: say what is true, do not overrule the person. It applies to what a *file* may contain, and
+it does not apply to what a *drag* may do. A layout that came from somewhere else is still read and
+still shown as it is.
+
+---
+
+### `FEAT-49` — The anchor's ninth of the screen, lit
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"instead of just dot we now should also highlight… the region part which we have use
+grid to divide it."*
+
+A dot at a corner is a dot on the part of the glass most phones round off — which is why four of the
+nine were invisible, and why a bigger inset only makes it a dot in slightly the wrong place. The
+region says the same thing with a shape no corner radius can hide.
+
+**Drawn under the controls**, as asked and for the reason given: a hint that obscures the thing it is
+about is worse than no hint. The dot stays, further in.
+
+---
+
+### `FEAT-50` — The control menu can be moved too
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"make gamepad dialog also draggable like floating button."*
+
+Same reason as the block: it opens in the middle, which is the one place a pad never is — until a
+control is dragged there, and then the menu is on top of the control it is about.
+
+---
+
+### `FEAT-51` — A control has a size a thumb can use
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"button size should have min and max limit at 100% scale because button can go very
+small or big right now."*
+
+`Placement`'s own bounds are 0.01 and 2.0 and they exist to catch a corrupt file: 0.01 of the shorter
+side is about half a millimetre on this phone and 2.0 is twice the screen. The editor now stops at
+**0.06 and 0.60**.
+
+**The file's bounds stay where they are**, deliberately. Refusing to open a layout over a matter of
+taste is worse than showing what it says — the limits belong to the thing making the change, not to
+the thing reading it.
+
+---
+
+### `FEAT-52` — Fading and hiding are two intervals, and two switches
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"pad should have one more interval option never the twice, one for halftone and 2nd
+for hiding it"* and *"I also want different toggle for K button."*
+
+Four settings where there were two: the controls fade and hide on their own intervals, and each of
+the controls and the toggle has its own switch. Hiding at twice the fade was one number pretending
+to be two.
+
+---
+
+### `CRIT-9` — `R3` moved, and the ceiling is 1.05 — with a correction
+
+**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"move R3 by 0.02 and raise the max."*
+
+Done: `stick.right.press` goes from 0.18 to 0.20, and `MAX_CONTROL_SCALE` from 1.00 to **1.05**,
+measured on four screen shapes.
+
+**A correction to what was said last round.** The claim was that this change would raise the ceiling
+to about 1.15. It does not — the measured answer is 1.05. That estimate was arithmetic on the layout
+*before* it was rounded to two decimals, and it checked whether controls overlapped without checking
+whether they stayed on the screen. A number given to the project owner as a reason to make a change
+was wrong by 10%.
+
+**What binds, and why it cannot be nudged away.** `R3` and `Start` are on the same edge, one anchored
+to the bottom and one to the top, so **growing the pad brings them together** however far apart they
+are drawn at the default. Another 0.02 buys 1.07 and then `R3` meets `R2` instead. The left column
+joins in past about 1.15.
 
 ---
 
@@ -2076,6 +2182,19 @@ already recorded in `CHANGELOG.md`. Nothing has been acted on and nothing has be
 
 - **Windows stop being a mode** → `FEAT-48`.
 - **The maximum is 1.00** → `CRIT-8`, with what it costs written down.
+
+
+
+### Round `0.0.36-dev`
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–6 | Menu width, max size, windows always drawn, the group in the menu | **All working** |
+| 7 | The anchor dot | Still hidden at corners → `FEAT-49`, which replaces the idea rather than adjusting it |
+| 8 | The floating block | **Did not drag at all** — a regression from the fix beside it → `BUG-42` |
+| 9 | Two timers | Working; the K button wants its own switch → `FEAT-52` |
+| 10 | Fade then hide | Working; hiding should be its own interval → `FEAT-52` |
+| 11 | Regression | `BUG-42`. Also: sizes need limits and a control should not leave the screen → `FEAT-51`, `BUG-43` |
 
 
 ### Awaiting

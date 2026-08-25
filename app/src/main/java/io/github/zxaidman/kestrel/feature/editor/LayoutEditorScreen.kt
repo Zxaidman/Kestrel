@@ -208,6 +208,14 @@ public fun LayoutEditorScreen(
     // the way in landscape put it in the way upright — the pad is in a different place in each,
     // which is the whole reason a layout has two arrangements.
     val panel = if (portrait) panelPortrait else panelLandscape
+
+    // Read through these inside the gesture. `panel` is derived from two states and the gesture is
+    // keyed on neither, so what the drag captured was the position at the moment the gesture
+    // started — every frame added its delta to the same stale number and the block did not move at
+    // all. The same trap as the canvas's own drag, which is why that one reads through
+    // `rememberUpdatedState` too.
+    val livePanel by rememberUpdatedState(panel)
+    val livePanelPortrait by rememberUpdatedState(portrait)
     val controlScale = AppSettings.current.value.let {
         if (portrait) it.controlScalePortrait else it.controlScale
     }.toFloat()
@@ -266,10 +274,10 @@ public fun LayoutEditorScreen(
                                 val limitX = max(0f, (rootSize.width - panelSize.width) / 2f)
                                 val limitY = max(0f, (rootSize.height - panelSize.height) / 2f)
                                 val moved = Offset(
-                                    (panel.x + dragged.x).coerceIn(-limitX, limitX),
-                                    (panel.y + dragged.y).coerceIn(-limitY, limitY),
+                                    (livePanel.x + dragged.x).coerceIn(-limitX, limitX),
+                                    (livePanel.y + dragged.y).coerceIn(-limitY, limitY),
                                 )
-                                if (portrait) panelPortrait = moved else panelLandscape = moved
+                                if (livePanelPortrait) panelPortrait = moved else panelLandscape = moved
                             }
                         }.pointerInput(Unit) {
                             detectTapGestures(onLongPress = { panelMenu = true })
@@ -548,6 +556,20 @@ private const val HIDDEN_PANEL_ALPHA = 0.22f
 
 /** A step small enough to place a control with and large enough to feel like a press. */
 private const val STEP = 0.02
+
+/**
+ * What the editor will let a control become, at full size.
+ *
+ * `Placement`'s own bounds are 0.01 and 2.0 and they exist to catch a corrupt file — not to keep a
+ * control usable. A control at 0.01 of the shorter side is about half a millimetre on this phone,
+ * and one at 2.0 is twice the screen. Neither is a mistake worth being able to make with a button.
+ *
+ * These are the editor's limits, deliberately, and the file's stay where they are: a layout written
+ * by hand or arriving from somewhere else is still read, because refusing to open a file over a
+ * matter of taste is worse than showing what it says.
+ */
+private const val EDITOR_MIN_SIZE = 0.06
+private const val EDITOR_MAX_SIZE = 0.60
 
 // --- the furniture that floats on the canvas -----------------------------------------------------
 
@@ -882,18 +904,40 @@ private fun MenuAt(
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Draggable, like the floating block and for the same reason: it opens in the middle, which is
+    // the one place a pad never is — until a control is dragged there, and then the menu is on top
+    // of the control it is about.
+    var moved by remember { mutableStateOf(Offset.Zero) }
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    var within by remember { mutableStateOf(IntSize.Zero) }
+    val liveMoved by rememberUpdatedState(moved)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { within = it }
             // Touching outside the menu closes it, which is what people try first.
             .clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier
+                .offset { IntOffset(liveMoved.x.roundToInt(), liveMoved.y.roundToInt()) }
+                .onSizeChanged { size = it }
                 .then(
                     if (landscape) Modifier.width(MENU_WIDTH.dp) else Modifier.fillMaxWidth(0.94f)
                 )
+                .pointerInput(within, size) {
+                    detectDragGestures { change, dragged ->
+                        change.consume()
+                        val limitX = max(0f, (within.width - size.width) / 2f)
+                        val limitY = max(0f, (within.height - size.height) / 2f)
+                        moved = Offset(
+                            (liveMoved.x + dragged.x).coerceIn(-limitX, limitX),
+                            (liveMoved.y + dragged.y).coerceIn(-limitY, limitY),
+                        )
+                    }
+                }
                 .clickable(enabled = false, onClick = {}),
             tonalElevation = 8.dp,
             shape = MaterialTheme.shapes.large,
@@ -1060,51 +1104,32 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
     Spacer(modifier = Modifier.height(2.dp))
     Text("Getting out of the way", style = MaterialTheme.typography.labelLarge)
     val idle = settings.idle
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Switch(
-            checked = idle.enabled,
-            onCheckedChange = { on ->
-                AppSettings.update { it.copy(idle = it.idle.copy(enabled = on)) }
-                onPersist()
-            },
-        )
-        Text("Fade when untouched", style = MaterialTheme.typography.bodyMedium)
+
+    fun setIdle(update: (IdlePreferences) -> IdlePreferences) {
+        AppSettings.update { it.copy(idle = update(it.idle)) }
+        onPersist()
     }
+
+    IdleSwitch("Fade the controls", idle.controlsEnabled) { on ->
+        setIdle { it.copy(controlsEnabled = on) }
+    }
+    IdleSeconds("controls fade", idle.controlsFadeSeconds, idle.controlsEnabled, onPersist) { v ->
+        AppSettings.update { it.copy(idle = it.idle.copy(controlsFadeSeconds = v)) }
+    }
+    IdleSeconds("controls hide", idle.controlsHideSeconds, idle.controlsEnabled, onPersist) { v ->
+        AppSettings.update { it.copy(idle = it.idle.copy(controlsHideSeconds = v)) }
+    }
+
+    IdleSwitch("Fade the K button", idle.toggleEnabled) { on ->
+        setIdle { it.copy(toggleEnabled = on) }
+    }
+    IdleSeconds("K button fade", idle.toggleSeconds, idle.toggleEnabled, onPersist) { v ->
+        AppSettings.update { it.copy(idle = it.idle.copy(toggleSeconds = v)) }
+    }
+
     Text(
-        text = "controls  %d s".format(idle.controlsSeconds),
-        style = MaterialTheme.typography.bodySmall,
-        fontFamily = FontFamily.Monospace,
-    )
-    Slider(
-        enabled = idle.enabled,
-        value = idle.controlsSeconds.toFloat(),
-        onValueChange = { v ->
-            AppSettings.update { it.copy(idle = it.idle.copy(controlsSeconds = v.roundToInt())) }
-        },
-        onValueChangeFinished = onPersist,
-        valueRange = IdlePreferences.MIN_SECONDS.toFloat()..IdlePreferences.MAX_SECONDS.toFloat(),
-    )
-    Text(
-        text = "K button  %d s".format(idle.toggleSeconds),
-        style = MaterialTheme.typography.bodySmall,
-        fontFamily = FontFamily.Monospace,
-    )
-    Slider(
-        enabled = idle.enabled,
-        value = idle.toggleSeconds.toFloat(),
-        onValueChange = { v ->
-            AppSettings.update { it.copy(idle = it.idle.copy(toggleSeconds = v.roundToInt())) }
-        },
-        onValueChangeFinished = onPersist,
-        valueRange = IdlePreferences.MIN_SECONDS.toFloat()..IdlePreferences.MAX_SECONDS.toFloat(),
-    )
-    Text(
-        text = "The controls dim after their interval and go after it again. The K button dims " +
-            "after its own — and only ever dims: it is the way out, and a way out that hides " +
-            "itself is not one.",
+        text = "Two intervals for the controls: one to fade, one to go. The K button has its own " +
+            "and only ever fades — it is the way out, and a way out that hides itself is not one.",
         style = MaterialTheme.typography.bodySmall,
     )
 
@@ -1145,6 +1170,39 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
         )
         Text("invert Y", style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+@Composable
+private fun IdleSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Switch(checked = checked, onCheckedChange = onChange)
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun IdleSeconds(
+    label: String,
+    seconds: Int,
+    enabled: Boolean,
+    onPersist: () -> Unit,
+    onValue: (Int) -> Unit,
+) {
+    Text(
+        text = "%s  %d s".format(label, seconds),
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
+    )
+    Slider(
+        enabled = enabled,
+        value = seconds.toFloat(),
+        onValueChange = { onValue(it.roundToInt()) },
+        onValueChangeFinished = onPersist,
+        valueRange = IdlePreferences.MIN_SECONDS.toFloat()..IdlePreferences.MAX_SECONDS.toFloat(),
+    )
 }
 
 @Composable
@@ -1439,13 +1497,13 @@ private fun negated(text: String): String {
 
 private fun LayoutElement.resizedBy(delta: Double, portrait: Boolean): LayoutElement {
     val current = placementFor(portrait)
-    val next = (current.width + delta).coerceIn(Placement.MIN_SIZE, Placement.MAX_SIZE)
+    val next = (current.width + delta).coerceIn(EDITOR_MIN_SIZE, EDITOR_MAX_SIZE)
     val ratio = if (current.width == 0.0) 1.0 else next / current.width
     return withPlacementFor(
         portrait,
         current.copy(
             width = round(next),
-            height = round((current.height * ratio).coerceIn(Placement.MIN_SIZE, Placement.MAX_SIZE)),
+            height = round((current.height * ratio).coerceIn(EDITOR_MIN_SIZE, EDITOR_MAX_SIZE)),
         ),
     )
 }
@@ -1456,7 +1514,7 @@ private fun LayoutElement.taller(delta: Double, portrait: Boolean): LayoutElemen
             portrait,
             current.copy(
                 height = round(
-                    (current.height + delta).coerceIn(Placement.MIN_SIZE, Placement.MAX_SIZE)
+                    (current.height + delta).coerceIn(EDITOR_MIN_SIZE, EDITOR_MAX_SIZE)
                 ),
             ),
         )
@@ -1737,6 +1795,10 @@ private fun EditorCanvas(
                         change.position.x - fitted.left - grab.x,
                         change.position.y - fitted.top - grab.y,
                     )
+                    val bounds = element.placementFor(livePortrait)
+                        .scaledBy(liveScale.toDouble())
+                        .resolve(fitted.surface)
+                        .shapedAs(element.effectiveShapeFor(livePortrait))
                     val snapped = snap(
                         layout = liveLayout,
                         fit = fitted,
@@ -1749,12 +1811,23 @@ private fun EditorCanvas(
                         toEdges = liveSnapEdges,
                     )
                     guides = snapped.guides
+                    // Kept on the screen. It used to be allowed off, with a warning and a button to
+                    // bring it back — which is a fault offered, reported and then undone rather
+                    // than not made. The project owner asked for the simpler contract: a control
+                    // cannot be dragged off the screen.
+                    val halfW = bounds.width / 2
+                    val halfH = bounds.height / 2
+                    val onScreen = Snapped(
+                        snapped.x.coerceIn(halfW, fitted.surface.widthPx - halfW),
+                        snapped.y.coerceIn(halfH, fitted.surface.heightPx - halfH),
+                        snapped.guides,
+                    )
                     // Placed as the pad shows it, written as the document holds it. The setting is
                     // applied on top of the file and editing must not fold it into the file.
                     val scale = liveScale.toDouble()
                     val current = element.placementFor(livePortrait)
                     val shown = current.scaledBy(scale)
-                        .centeredAt(fitted.surface, snapped.x, snapped.y)
+                        .centeredAt(fitted.surface, onScreen.x, onScreen.y)
                     livePlace(
                         element.withPlacementFor(
                             livePortrait,
@@ -1772,6 +1845,12 @@ private fun EditorCanvas(
         drawScreen(fitted)
         drawGrid(fitted, gridUnit)
         drawThirds(fitted, gridUnit)
+        // The region the selected control's anchor belongs to, lit under everything. A dot at a
+        // corner is a dot on the part of the glass most phones round off — this says the same thing
+        // with a shape big enough that no corner radius can hide it.
+        layout.element(selectedId ?: "")?.let { chosen ->
+            drawAnchorRegion(fitted, chosen.placementFor(livePortrait).anchor)
+        }
 
         val placed = layout.elements.map { it.id to rectOf(fitted, it) }
         @Suppress("UNUSED_EXPRESSION") controlScale
@@ -2007,13 +2086,41 @@ private fun DrawScope.drawThirds(fit: Fit, gridUnit: Double) {
     }
 }
 
+/**
+ * The ninth of the screen the selected control is anchored into.
+ *
+ * Very light, and drawn **before** the controls so it is under them rather than over them — this
+ * says where a control is measured from, and a hint that obscures the thing it is about is worse
+ * than no hint.
+ */
+private fun DrawScope.drawAnchorRegion(fit: Fit, anchor: Anchor) {
+    val third = 1f / 3f
+    val column = when (anchor.originX) {
+        0.0 -> 0
+        1.0 -> 2
+        else -> 1
+    }
+    val row = when (anchor.originY) {
+        0.0 -> 0
+        1.0 -> 2
+        else -> 1
+    }
+    drawRect(
+        color = Color(0xFF60BAFF).copy(alpha = 0.10f),
+        topLeft = Offset(fit.left + fit.width * third * column, fit.top + fit.height * third * row),
+        size = Size(fit.width * third, fit.height * third),
+    )
+}
+
 /** Where the selected control's offsets are measured from, as a dot you can see. */
 private fun DrawScope.drawAnchor(fit: Fit, anchor: Anchor) {
     // Pulled in from the edge by its own size. A corner anchor sits exactly at the corner of the
     // display, and almost every phone rounds that corner off — so four of the nine dots were being
     // drawn on glass that is not there. Inset, the dot is still unmistakably at its corner and is
     // always visible.
-    val inset = 16f
+    // Far enough in that a rounded corner cannot swallow it. 16px was not: on this phone that is
+    // about six of the density-independent pixels a corner radius is measured in.
+    val inset = 34f
     val x = (fit.left + fit.width * anchor.originX.toFloat())
         .coerceIn(fit.left + inset, fit.left + fit.width - inset)
     val y = (fit.top + fit.height * anchor.originY.toFloat())

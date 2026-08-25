@@ -570,72 +570,92 @@ block shared one position between orientations (`BUG-41`).
 
 ---
 
-## Built, awaiting confirmation — `0.0.36-dev`
+### `CRIT-8`, `BUG-39`, `BUG-40`, `BUG-41`, `FEAT-47`, `FEAT-48` — **closed `0.0.36-dev`**
 
-### `CRIT-8` — The maximum is what the shipped layout survives
+The maximum that the shipped layout survives; the menu width that finally shipped; the inset anchor
+dot; a block position per orientation; two idle timers; and windows drawn always instead of being a
+mode. **All measured.**
 
-Measured on four screen shapes: the shipped arrangement is clean to **1.03**. The maximum is
-**1.00**, the same as the default.
+Two of them came back with more work attached, and both are worth recording. The anchor dot was
+still invisible at corners — inset was the wrong answer to a rounded screen, and `FEAT-49` replaces
+the idea rather than adjusting it. And giving the block a position per orientation stopped it
+dragging at all, which is `BUG-42`: a regression introduced by the fix beside it, in the same round.
 
-From 1.04 to about 1.15 the only pair that touches is `stick.right.press` against `menu.start`; past
-about 1.2 the left column joins in. **The cost is that the size slider now only goes down.** Moving
-`R3` about 0.02 further from `Start` would raise the ceiling to roughly 1.15 — the project owner's
-arrangement to change, not this side's.
+---
+
+---
+
+## Built, awaiting confirmation — `0.0.37-dev`
+
+### `CRIT-9` — `R3` moved, the ceiling is 1.05, and last round's number was wrong
+
+`stick.right.press` goes 0.18 → 0.20 and `MAX_CONTROL_SCALE` 1.00 → **1.05**, measured on four screen
+shapes.
+
+**The correction matters more than the change.** Last round said this would raise the ceiling to
+about 1.15, and the project owner made a decision on that number. It is 1.05. The estimate was
+arithmetic on the layout *before* it was rounded to two decimals, and it checked overlap without
+checking whether controls stayed on the screen.
+
+**Why it cannot be nudged much further:** `R3` and `Start` sit on the same edge, one anchored to the
+bottom and one to the top, so growing the pad brings them together however far apart they are at the
+default. Another 0.02 buys 1.07 and `R3` meets `R2` instead.
 
 Unverified on the device.
 
 ---
 
-### `BUG-39` — The menu is actually wider this time
+### `BUG-42` — The block drags again
 
-There was never any difference to notice. The constant went 230 → 300; the round after rewrote the
-file's top half and restored 250; the round after that replaced "300" with "380", **matched nothing,
-changed nothing, said nothing** — and it was written up as shipped.
-
-**That is `BUG-31` happening a second time, in the entry where the rule was written down.** A
-search-and-replace that finds nothing is a silent failure, not a no-op.
-
-**What changed as a result:** these edits now fail loudly when the text they are replacing is not
-there, rather than depending on remembering to check. A rule that needs discipline every time is a
-rule that will be broken again.
-
-Unverified on the device — 380dp this time, and verified in the file.
+A value derived from two states, captured by a gesture keyed on neither: every frame added its delta
+to the position from when the drag began, so nothing moved. **The same trap the canvas's own drag was
+written to avoid**, with the note explaining why a few hundred lines away in the same file. It reads
+through `rememberUpdatedState` now, like the canvas does. Unverified.
 
 ---
 
-### `BUG-40` — The anchor dot is inset
+### `BUG-43` — A control cannot be dragged off the screen
 
-A corner anchor sits exactly at the corner of the display and almost every phone rounds that off, so
-four of the nine dots were drawn on glass that does not exist. Inset by its own size: still
-unmistakably at its corner, always visible. Unverified.
+It was allowed off, with a warning and a button to bring it back — a fault offered, reported, then
+undone, where none of the three steps was needed.
 
----
+**This reverses a stated position and the reversal is right.** The old reasoning was `ADR-007`'s
+spirit: say what is true rather than overrule the person. That applies to what a *file* may contain.
+It does not apply to what a *drag* may do. A layout from elsewhere is still read and still shown as
+it is.
 
-### `BUG-41` — The block remembers where it was put, per orientation
-
-Moving it out of the way in landscape put it in the way upright. Unverified.
-
----
-
-### `FEAT-47` — Two timers
-
-How long a pad waits before getting out of the way, and how long a small button in a corner sits at
-full strength, are different questions. One number for both made the second hostage to the first.
 Unverified.
 
 ---
 
-### `FEAT-48` — Windows are not a mode any more
+### `FEAT-49` — The anchor's ninth of the screen
 
-The boxes are drawn faintly under the pad **at all times**, and which window a control is in moved
-into its long-press menu. The mode switch is gone.
+A dot at a corner is a dot where the glass is rounded off, so a bigger inset only makes it a dot in
+slightly the wrong place. The region is lit instead — very faint, and **under** the controls, because
+a hint that obscures the thing it is about is worse than no hint. The dot stays, further in.
+Unverified.
 
-The project owner's reasoning is the right reasoning: a window was a mode you had to be *in* to see,
-so the way to find out that dragging a control across the screen had turned its window into a lid
-over the whole display was to go looking for it. Drawn always, it is simply visible while it happens.
+---
 
-The settings sheet keeps the read-out of every window and its share of the screen — the one view
-that cannot be had at a single control. Unverified on the device.
+### `FEAT-50` — The control menu moves
+
+Draggable like the block, and for the same reason: it opens in the middle, which is where a pad never
+is — until a control is dragged there. Unverified.
+
+---
+
+### `FEAT-51` — Sizes a thumb can use
+
+The editor stops at 0.06 and 0.60 of the shorter side. `Placement`'s own 0.01 and 2.0 exist to catch
+a corrupt file — half a millimetre and twice the screen — and **they stay where they are**: refusing
+to open a layout over a matter of taste is worse than showing what it says. Unverified.
+
+---
+
+### `FEAT-52` — Four settings where there were two
+
+The controls fade and hide on their own intervals, and the controls and the toggle each have their
+own switch. Hiding at twice the fade was one number pretending to be two. Unverified.
 
 ---
 

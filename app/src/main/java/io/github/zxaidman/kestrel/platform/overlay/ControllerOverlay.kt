@@ -372,7 +372,7 @@ public class ControllerOverlay(
     /** Called by anything the user does to the pad. Restores it if it had faded or gone. */
     internal fun touched() {
         val wasIdle = android.os.SystemClock.uptimeMillis() - lastTouch >=
-            minOf(idleAfterMs(), toggleAfterMs())
+            minOf(fadeAfterMs(), toggleAfterMs())
         lastTouch = android.os.SystemClock.uptimeMillis()
         if (wasIdle) applyIdle()
     }
@@ -380,29 +380,32 @@ public class ControllerOverlay(
     private fun idleSettings() =
         io.github.zxaidman.kestrel.platform.settings.AppSettings.current.value.idle
 
-    private fun idleAfterMs(): Long = idleSettings().controlsSeconds.toLong() * 1000L
+    private fun fadeAfterMs(): Long = idleSettings().controlsFadeSeconds.toLong() * 1000L
+
+    private fun hideAfterMs(): Long = idleSettings().controlsHideSeconds.toLong() * 1000L
 
     private fun toggleAfterMs(): Long = idleSettings().toggleSeconds.toLong() * 1000L
 
     private fun applyIdle() {
         val settings = idleSettings()
-        if (!settings.enabled) {
-            toggle?.alpha = 1f
+        val quiet = android.os.SystemClock.uptimeMillis() - lastTouch
+
+        toggle?.alpha =
+            if (settings.toggleEnabled && quiet >= toggleAfterMs()) IDLE_ALPHA else 1f
+
+        if (!controlsVisible) return
+        if (!settings.controlsEnabled) {
             clusters.forEach { it.alpha = 1f }
             return
         }
-        val quiet = android.os.SystemClock.uptimeMillis() - lastTouch
-        val step = idleAfterMs()
-
-        toggle?.alpha = if (quiet >= toggleAfterMs()) IDLE_ALPHA else 1f
-
-        if (!controlsVisible) return
-        if (quiet >= step * 2) {
-            // Stage two. Everything is released on the way out, which `hideControls` already does —
-            // a control that vanishes mid-press leaves nothing behind able to let go of it.
+        // Two intervals rather than one and its double. Fading and disappearing are different
+        // amounts of getting out of the way, and hiding can be asked for long after fading.
+        if (quiet >= maxOf(hideAfterMs(), fadeAfterMs())) {
+            // Everything is released on the way out, which `hideControls` already does — a control
+            // that vanishes mid-press leaves nothing behind able to let go of it.
             hideControls()
         } else {
-            clusters.forEach { it.alpha = if (quiet >= step) IDLE_ALPHA else 1f }
+            clusters.forEach { it.alpha = if (quiet >= fadeAfterMs()) IDLE_ALPHA else 1f }
         }
     }
 

@@ -197,7 +197,7 @@
       "group": "right-stick",
       "shape": "circle",
       "anchor": "bottom-right",
-      "offsetX": 0.18,
+      "offsetX": 0.2,
       "offsetY": 0.68,
       "width": 0.1,
       "height": 0.1,

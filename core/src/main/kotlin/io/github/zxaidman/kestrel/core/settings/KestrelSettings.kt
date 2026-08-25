@@ -82,16 +82,22 @@ public data class KestrelSettings(
         /**
          * As far as the size setting goes, and it is deliberately the same as the default.
          *
-         * The project owner's judgement, and the measurement agrees with it: 200% was overdoing it,
-         * and the shipped arrangement is clean to **1.03** — above that `R3` meets `Start`, and past
-         * about 1.2 the left column runs into itself. A maximum the shipped layout cannot survive is
-         * a maximum that ships a broken pad to anyone who drags the slider up.
+         * The project owner's judgement, and the measurement agrees: 200% was overdoing it. A
+         * maximum the shipped layout cannot survive is a maximum that ships a broken pad to anyone
+         * who drags the slider up.
          *
-         * The cost, stated: the slider only goes down from the default. Moving `R3` about 0.02
-         * further from `Start` would raise this to roughly 1.15, and that is the project owner's
-         * arrangement to change rather than this side's.
+         * **1.05, measured** on four screen shapes with `R3` moved 0.02 as the project owner asked.
+         * What binds is `R3` against `Start`: they are on the same edge, one anchored to the bottom
+         * and one to the top, so growing the pad brings them together no matter how far apart they
+         * are drawn at the default. Moving `R3` a further 0.02 buys 1.07 and then it meets `R2`
+         * instead.
+         *
+         * **A correction:** the previous round said this change would raise the ceiling to about
+         * 1.15. That was arithmetic on the layout before it was rounded to two decimals, and it
+         * checked overlap without checking whether a control stayed on the screen. The measured
+         * answer is 1.05.
          */
-        public const val MAX_CONTROL_SCALE: Double = 1.00
+        public const val MAX_CONTROL_SCALE: Double = 1.05
     }
 }
 
@@ -242,8 +248,12 @@ public object SettingsDocument {
             "controlScalePortrait" to ConfigNode.Num(settings.controlScalePortrait),
             "idle" to ConfigNode.Obj(
                 linkedMapOf(
-                    "enabled" to ConfigNode.Bool(settings.idle.enabled),
-                    "controlsSeconds" to ConfigNode.Num(settings.idle.controlsSeconds.toDouble()),
+                    "controlsEnabled" to ConfigNode.Bool(settings.idle.controlsEnabled),
+                    "toggleEnabled" to ConfigNode.Bool(settings.idle.toggleEnabled),
+                    "controlsFadeSeconds" to
+                        ConfigNode.Num(settings.idle.controlsFadeSeconds.toDouble()),
+                    "controlsHideSeconds" to
+                        ConfigNode.Num(settings.idle.controlsHideSeconds.toDouble()),
                     "toggleSeconds" to ConfigNode.Num(settings.idle.toggleSeconds.toDouble()),
                 )
             ),
@@ -368,18 +378,39 @@ public object SettingsDocument {
         }
         return Outcome.Success(
             IdlePreferences(
-                enabled = when (
-                    val v = ConfigReader.boolean(idle, "enabled", defaults.enabled, "idle")
+                controlsEnabled = when (
+                    val v = ConfigReader.boolean(
+                        idle, "controlsEnabled", defaults.controlsEnabled, "idle",
+                    )
                 ) {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value
                 },
-                controlsSeconds = when (
+                toggleEnabled = when (
+                    val v = ConfigReader.boolean(
+                        idle, "toggleEnabled", defaults.toggleEnabled, "idle",
+                    )
+                ) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                },
+                controlsHideSeconds = when (
                     val v = optionalNumber(
-                        idle, "controlsSeconds",
+                        idle, "controlsHideSeconds",
                         IdlePreferences.MIN_SECONDS.toDouble(),
                         IdlePreferences.MAX_SECONDS.toDouble(),
-                        defaults.controlsSeconds.toDouble(), "idle",
+                        defaults.controlsHideSeconds.toDouble(), "idle",
+                    )
+                ) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value.toInt()
+                },
+                controlsFadeSeconds = when (
+                    val v = optionalNumber(
+                        idle, "controlsFadeSeconds",
+                        IdlePreferences.MIN_SECONDS.toDouble(),
+                        IdlePreferences.MAX_SECONDS.toDouble(),
+                        defaults.controlsFadeSeconds.toDouble(), "idle",
                     )
                 ) {
                     is Outcome.Failure -> return v
