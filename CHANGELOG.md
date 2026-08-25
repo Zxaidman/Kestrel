@@ -13,6 +13,55 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.39-dev` — Save Means This One
+
+**Saving in one orientation wrote both arrangements.** Reported, and it had been true since a layout
+gained two arrangements: the editor edits one orientation at a time, and Save wrote the whole
+document — so a careful landscape arrangement, saved, also committed whatever half-moved state
+portrait happened to be in. Save now writes **the orientation on screen** and puts the other one back
+as it is in the file; the other orientation's edits stay in memory, unsaved, until the phone is
+turned to it.
+
+Shared fields are not held back, because they are not per-orientation facts: the header, the
+bindings, the window a control belongs to. Nor is a control that has no portrait arrangement of its
+own, where editing it upright *is* editing landscape. Nor is giving or dropping a portrait
+arrangement, which changes the shape of the document rather than one view of it.
+
+Unsaved work is **derived** from a comparison against the file now, not tracked by a flag. A dozen
+call sites edit the document, and one that forgot to set the flag would make the editor lie about
+what is saved.
+
+**Leaving says which arrangement is pending**, and offers to turn the phone to it rather than only
+offering to lose it.
+
+**A failed save used to clear the unsaved marker anyway** — reporting work as filed while the file
+still held what it held before. Fixed alongside; the save callback returns a typed outcome rather
+than a message the editor would have to read the wording of.
+
+**The size ceiling is 120%, and overlap above the guarantee is marked.** The measured guarantee held
+on the reference device — *"from 50% to 115% is good"* — and controls meet above it, which was always
+the expected cost. What the editor did not do was **say so**. It now outlines every pair whose
+rectangles intersect, at the size the pad is actually drawn at, and the ceiling comes down from 150%
+to 120% so the allowed-but-unguaranteed band is five points wide rather than thirty-five.
+
+**A refusal names what it would accept.** Typing an out-of-range size already said which two numbers
+were allowed; typing an offset that put a control off the screen said only that it did. It now names
+the range for each axis, scanned against the same geometry the drawing uses rather than derived from
+a formula that would drift from it.
+
+**Four status lines are back.** Minimising the button block a build earlier removed a paragraph that
+was in the way and took four useful facts with it. Warnings only when there are any, the layout and
+its orientation and whether it is saved, what is selected, and its size and position.
+
+**A trigger reads one way now.** On a circle the value was shown twice — a fill rising from the
+bottom and a border sweeping clockwise, two readings of one number going different ways. The border
+fills bottom-to-top in the control's own shape now, for every shape. The edge highlight itself stays:
+a fill inside a small control is exactly the part a thumb is covering.
+
+**Warning.** All of the above is unverified on a device. `115%` is a measurement of *the shipped
+layout on the reference device only* — a layout somebody arranges themselves has whatever ceiling its
+own spacing gives it, which is what the overlap marking is for.
+
 ### `0.0.38-dev` — Fifty To A Hundred And Fifty, And What That Costs
 
 **The size range is 50% to 150% and the guarantee is 50% to 115%.** Those are different numbers on

@@ -901,27 +901,24 @@ private class ClusterView(
         val analog = control.kind == ControlKind.ANALOG_TRIGGER
         val value = level[control.id] ?: 0f
         if (analog && value > 0f) {
+            // One reading, one direction, whatever the shape. The face and the edge both fill from
+            // the bottom upward in proportion to the value being sent — the same number the target
+            // receives, shown where the thumb is.
+            //
+            // A circle used to run a clockwise sweep around its border instead. That was a second
+            // reading of the same number, travelling a different way from the fill immediately
+            // inside it, and the project owner reported the rectangle as the one that read right.
             canvas.save()
-            // Fills from the bottom upward, in proportion to the value being sent — the same number
-            // the target receives, shown where the thumb is.
             val top = cy + control.extentY - 2f * control.extentY * value
             canvas.clipRect(cx - control.extentX, top, cx + control.extentX, cy + control.extentY)
             outline(canvas, control, glow)
-            canvas.restore()
-            // And again around the edge, because a fill inside a small control is exactly the part
-            // of it a thumb is covering. Drawn as the control's own shape: a circular ring around a
-            // rectangle was the outline of a control that is not there.
+            // The edge is drawn as well as the face, because a fill inside a small control is
+            // exactly the part of it a thumb is covering. In the control's own shape: a circular
+            // ring around a rectangle was the outline of a control that is not there.
             val inset = ring.strokeWidth * 0.6f
             if (control.shape == ControlShape.CIRCLE) {
-                val ringRadius = r - inset
-                arc.set(cx - ringRadius, cy - ringRadius, cx + ringRadius, cy + ringRadius)
-                canvas.drawArc(arc, -90f, 360f * value, false, ring)
+                canvas.drawCircle(cx, cy, r - inset, ring)
             } else {
-                // A rounded rectangle has no sweep to animate, so the edge fills from the bottom
-                // like the face does — the same reading, in the shape the control actually has.
-                canvas.save()
-                val top = cy + control.extentY - 2f * control.extentY * value
-                canvas.clipRect(cx - control.extentX, top, cx + control.extentX, cy + control.extentY)
                 arc.set(
                     cx - control.extentX + inset,
                     cy - control.extentY + inset,
@@ -929,8 +926,8 @@ private class ClusterView(
                     cy + control.extentY - inset,
                 )
                 canvas.drawRoundRect(arc, control.corner, control.corner, ring)
-                canvas.restore()
             }
+            canvas.restore()
         } else if (!analog && pressed[control.id] == true) {
             outline(canvas, control, glow)
         }

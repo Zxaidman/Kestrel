@@ -33,6 +33,75 @@ Shizuku shell (uid 2000), no root. One device, one firmware, one person testing.
 
 ## Closed items
 
+### `CRIT-10` — 50%–150%, guaranteed to 115%, ceiling at 120% — **closed `0.0.39-dev`**
+
+**Asked for.** *"create new default at 100% which can scale 50% and 150% respectively at default."*
+
+**Built.** A default layout re-authored from the project owner's own arrangement — every size at
+0.90 of what it was, every offset at 0.88 — sized so face buttons are 6.3 mm across at 100%.
+
+**How it is known.** **Measured**, reference device: *"from 50% to 115% is good."*
+
+**Cost, and it is the whole point of the entry.** The promise is 50%–115%, not 50%–150%. Guaranteeing
+150% would need face buttons about 5 mm across at 100%, which is not worth shipping to reach a
+number:
+
+| face button at 100% | clean up to |
+| --- | --- |
+| 7.0 mm | 1.00 |
+| **6.3 mm** | **1.15** |
+| 5.6 mm | 1.25 |
+| 4.9 mm | 1.45 |
+
+The ceiling came down from 150% to **120%** in `0.0.39-dev`, so the band that is allowed but not
+guaranteed is five points wide rather than thirty-five. Above 115% the editor marks what meets.
+
+**One thing found on the way.** `BuiltInLayoutsTest` was validating the *landscape* arrangement on
+portrait surfaces, which since `FEAT-15` is not what a portrait screen draws — a portrait
+arrangement could have overlapped itself and passed. The search that produced this default was wrong
+until the pairing was fixed. There is now a test that checks the portrait arrangement on portrait
+screens.
+
+---
+
+### `BUG-44` — Typed numbers obey the limits dragging obeys — **closed `0.0.39-dev`**
+
+**Reported.** `0.0.37-dev`: the dialog accepted sizes and offsets that dragging refuses.
+
+**Built.** The numbers dialog checks the same bounds the drag does — size between 0.05 and 0.50 of
+the shorter side, offsets within `Placement.MAX_OFFSET`, and the resolved control on the screen —
+and says which one was missed. **Measured**, reference device: *"working"*.
+
+**Cost.** None. It removed a second, invisible rule.
+
+---
+
+### `BUG-45` — Fading is a warning again — **closed `0.0.39-dev`**
+
+**Reported.** *"if i set both to 5s then it would hide it without ever going halftone."*
+
+**Built.** Hiding is counted **from the fade**, not from the last touch, so equal intervals give a
+fade and then a hide instead of both at once. **Measured**, reference device: *"yes working"*.
+
+**Cost.** None.
+
+---
+
+### `FEAT-49`, `FEAT-51`, `FEAT-52`, `FEAT-53`, `FEAT-54` — the editor's furniture — **closed `0.0.39-dev`**
+
+**Built.** The anchor region is lit rather than dotted, and snaps to the same grid the dividers do.
+Editor sizes stop at 0.05 and 0.50. The idle settings are four, and the toggle has its own. The
+button block minimises to one draggable button instead of fading — *"a faded block is still there to
+be caught by a thumb"* — and is opaque.
+
+**How it is known.** **Measured**, reference device: *"working"*, *"yes done"*.
+
+**Cost.** Minimising the block also took four useful status lines with the paragraph it was removing.
+They came back in `FEAT-57` the following build. Solving the crowding by deleting the content was the
+wrong cut, and it took a round to find out.
+
+---
+
 ### `BUG-9` — A square drew as a rectangle in the editor — **closed `0.0.26-dev`**
 
 **Reported.** `width 0.24`, `height 0.12`, shape `square`: a rectangle in the editor, a correct
@@ -595,7 +664,82 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
-## Built, awaiting confirmation — `0.0.38-dev`
+## Built, awaiting confirmation — `0.0.39-dev`
+
+### `BUG-46` — Save writes the orientation on screen
+
+Since `FEAT-15` a layout holds two arrangements and the editor edits one at a time, but Save wrote
+the whole document — so arranging landscape carefully and pressing Save committed whatever
+half-moved state portrait was in.
+
+Save now writes the orientation on screen and puts the other one back as it is in the file. The
+other orientation's edits stay in memory, still unsaved, until the phone is turned to it.
+
+Unsaved work is now **derived** from a comparison against what is in the file rather than set by a
+flag. A dozen call sites edit the document; a flag would have to be set at every one of them, and
+one missed call site means the editor lies about what is saved.
+
+Three things are deliberately not held back: shared fields (header, bindings, the window a control
+belongs to); a control with no portrait arrangement of its own, where editing upright *is* editing
+landscape; and giving or dropping a portrait arrangement, which changes the shape of the document
+rather than one view of it.
+
+**Also fixed:** a failed save used to clear the unsaved marker anyway. `onSave` returns a typed
+`SaveOutcome` now instead of a string the editor would have had to read the wording of.
+
+Unverified.
+
+---
+
+### `FEAT-58` — Leaving names the arrangement that is still unsaved
+
+The consequence of `BUG-46`: now that Save writes one orientation, Exit can lose work that is not on
+screen. The dialog says which arrangement is pending, that Save writes only the one on screen, and
+offers a **Go to landscape** / **Go to portrait** button that turns the phone to it. Unverified.
+
+---
+
+### `BUG-7` — One reading, one direction
+
+The analog trigger showed its value twice on a circle: a fill rising from the bottom, and a border
+sweeping clockwise. Two readings of the same number travelling different ways. The border now fills
+bottom-to-top in the control's own shape, the same way the face does, for every shape.
+
+The edge highlight was kept rather than removed, because the reason for it still holds: a fill inside
+a small control is exactly the part a thumb is covering, and a trigger with only a face fill cannot
+be read while it is pressed. Unverified.
+
+---
+
+### `FEAT-55` — The ceiling is 120%, and overlap is marked
+
+`MAX_CONTROL_SCALE` drops from 1.50 to 1.20. The editor finds every pair of controls whose resolved
+rectangles intersect — at the size the pad is actually drawn at, in the orientation on screen — and
+outlines both in amber, with the count in the warning line. Unverified.
+
+---
+
+### `FEAT-56` — The off-screen refusal names the offsets it would accept
+
+*"That puts the control off the screen"* is true and no help. It now names the allowed range for
+each axis at the size that was typed and from the anchor that is set. The range is **scanned**
+against the same `resolve` and `shapedAs` the drawing uses, not derived from a formula: a formula
+that has to agree with that geometry is a second copy of it that will drift. It runs only after a
+value has been refused, so eight hundred cheap probes cost nothing anybody can feel.
+
+Unverified.
+
+---
+
+### `FEAT-57` — Four status lines are back
+
+Warnings only when there are any; the layout's name with its orientation and whether it is saved;
+what is selected; its size and position. Small face, so four lines cost about what one did.
+Unverified.
+
+---
+
+## Confirmed and moved to closed items — `0.0.38-dev`
 
 ### `CRIT-10` — 50% to 150%, and what it costs
 

@@ -80,12 +80,15 @@ public data class KestrelSettings(
         public const val DEFAULT_CONTROL_SCALE: Double = 1.00
         public const val MIN_CONTROL_SCALE: Double = 0.50
         /**
-         * As far as the size setting goes: **half to half again**, as the project owner asked.
+         * As far as the size setting goes.
          *
          * What is **guaranteed** is narrower than what is allowed, and the difference is measured
          * rather than assumed. The shipped layout is clean — nothing overlapping, nothing off the
          * screen, in both orientations, on four screen shapes — from [MIN_CONTROL_SCALE] to
-         * **1.15**. Between there and 1.50 controls may meet, and the editor marks them.
+         * **1.15**. Between there and the maximum controls may meet, and the editor marks them.
+         *
+         * **1.20 rather than 1.50**, decided by the project owner after seeing what 150% looks
+         * like: a range whose top half is unusable is a range that ends where the usable part ends.
          *
          * **Why the guarantee stops there, with the numbers.** Growing the pad grows the gaps
          * between clusters at the same rate as the controls, but a control anchored to the bottom
@@ -102,7 +105,7 @@ public data class KestrelSettings(
          * A pad whose face buttons are five millimetres across is not a pad worth shipping to reach
          * a number, so the default sits at 6.3 mm and 1.50 is headroom rather than a promise.
          */
-        public const val MAX_CONTROL_SCALE: Double = 1.50
+        public const val MAX_CONTROL_SCALE: Double = 1.20
 
         /** The largest size the shipped layout is *guaranteed* clean at. Measured, not chosen. */
         public const val GUARANTEED_CONTROL_SCALE: Double = 1.15

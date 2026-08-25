@@ -106,6 +106,15 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
+ * What came of a Save.
+ *
+ * A message on its own was not enough to act on: the editor has to know whether the file actually
+ * changed before it moves its idea of what is in it, and reading that back out of the wording
+ * would make the wording load-bearing.
+ */
+public data class SaveOutcome(val written: Boolean, val message: String)
+
+/**
  * Editing a layout by moving it, rather than by typing numbers into a file.
  *
  * The file stays the truth — this writes the same document a text editor would, and everything it
@@ -129,7 +138,7 @@ import kotlin.math.roundToInt
 @Composable
 public fun LayoutEditorScreen(
     layout: ControllerLayout,
-    onSave: (ControllerLayout) -> String,
+    onSave: (ControllerLayout) -> SaveOutcome,
     onClose: () -> Unit,
     onPreviewOrientation: (Boolean) -> Unit,
 ) {
@@ -162,7 +171,10 @@ public fun LayoutEditorScreen(
 
     var working by remember(layout.header.id) { mutableStateOf(layout) }
     var selectedId by remember(layout.header.id) { mutableStateOf<String?>(null) }
-    var dirty by remember(layout.header.id) { mutableStateOf(false) }
+    // What is in the file. Save writes over it; everything else leaves it alone. Keeping it lets
+    // the editor answer two questions it could not before: which of the two arrangements has
+    // unsaved work, and what the *other* one looked like on disk when this one is written out.
+    var savedDoc by remember(layout.header.id) { mutableStateOf(layout) }
     var message by remember { mutableStateOf("") }
     // Remembered for the session, not written to settings.json. Somebody who turns edge snapping
     // on wants it on for the arranging they are doing — but it is working state rather than a
@@ -204,6 +216,16 @@ public fun LayoutEditorScreen(
     // drawing a small picture of it, so "the orientation on screen" is always the honest answer.
     val portrait = device.heightPx > device.widthPx
 
+    // Unsaved work, counted per orientation rather than once for the document. Save used to write
+    // whatever was in memory, so arranging landscape and pressing Save committed a half-finished
+    // portrait arrangement along with it. Derived from the file rather than set by a flag: every
+    // edit goes through `working`, and a flag would have to be set at each of the dozen places
+    // that touch it — one missed call site and the editor lies about what is saved.
+    val dirtyLandscape = remember(working, savedDoc) { working.differsFrom(savedDoc, portrait = false) }
+    val dirtyPortrait = remember(working, savedDoc) { working.differsFrom(savedDoc, portrait = true) }
+    val dirtyHere = if (portrait) dirtyPortrait else dirtyLandscape
+    val dirtyOther = if (portrait) dirtyLandscape else dirtyPortrait
+
     // Where the block was put, per orientation. One position for both meant that moving it out of
     // the way in landscape put it in the way upright — the pad is in a different place in each,
     // which is the whole reason a layout has two arrangements.
@@ -229,6 +251,26 @@ public fun LayoutEditorScreen(
             .isWithin(device)
     }.map { it.id }
 
+    // Controls sitting on top of another control. Above the size the shipped layout is guaranteed
+    // clean at, this is allowed and the editor's job is to say where it happens — a range whose top
+    // is unmarked is a range whose top is a surprise.
+    val overlapping = remember(working, device, controlScale, portrait) {
+        val placed = working.elements.map { element ->
+            element.id to element.placementFor(portrait).scaledBy(controlScale.toDouble())
+                .resolve(device).shapedAs(element.effectiveShapeFor(portrait))
+        }
+        val met = mutableSetOf<String>()
+        for (i in placed.indices) {
+            for (j in i + 1 until placed.size) {
+                if (Clustering.gapBetween(placed[i].second, placed[j].second) < 0) {
+                    met += placed[i].first
+                    met += placed[j].first
+                }
+            }
+        }
+        met
+    }
+
     // Controls in the strip the system bars take. They work while a game is full screen and not
     // while the bars are showing, which is worth counting rather than explaining twice.
     val underBars = bars?.let { band ->
@@ -249,6 +291,7 @@ public fun LayoutEditorScreen(
             portrait = portrait,
             layout = working,
             selectedId = selectedId,
+            marked = overlapping,
             dimExcept = menuFor,
             gridUnit = gridUnit,
             snapToGrid = snapToGrid,
@@ -266,7 +309,6 @@ public fun LayoutEditorScreen(
             },
             onPlace = { updated ->
                 working = working.replacing(updated)
-                dirty = true
             },
         )
 
@@ -344,53 +386,87 @@ public fun LayoutEditorScreen(
                                 containerColor = Color(0xFFE0603A),
                                 onClick = {
                                     working = working.withStraysBroughtBack(strays, portrait)
-                                    dirty = true
                                     message = "${strays.size} put back."
                                 },
                             ) { Icon(Icons.Filled.Home, contentDescription = "Bring strays back") }
                         }
                         FloatingActionButton(
-                            containerColor = if (dirty) {
+                            containerColor = if (dirtyHere) {
                                 MaterialTheme.colorScheme.primary
                             } else {
                                 MaterialTheme.colorScheme.surfaceVariant
                             },
                             onClick = {
-                                message = if (dirty) {
-                                    dirty = false
-                                    onSave(working)
+                                message = if (dirtyHere) {
+                                    // Only this orientation. `working` still holds whatever was
+                                    // arranged in the other one; it stays in memory, unsaved,
+                                    // until the phone is turned to it and Save is pressed there.
+                                    val write = working.mergedOver(savedDoc, portrait)
+                                    val said = onSave(write)
+                                    // Only on a write that happened. Moving the baseline after a
+                                    // failed save would report the work as filed when the file
+                                    // still holds what it held before.
+                                    if (said.written) savedDoc = write
+                                    said.message
                                 } else {
-                                    "Nothing has changed."
+                                    "Nothing has changed here."
                                 }
                             },
                         ) { Text("Save") }
                         FloatingActionButton(
-                            onClick = { if (dirty) leaving = true else onClose() },
+                            onClick = {
+                                if (dirtyHere || dirtyOther) leaving = true else onClose()
+                            },
                         ) { Text("Exit") }
                     }
 
-                    // One line, not five. Everything that was spelled out here is in the settings
-                    // sheet, and a paragraph floating over the pad is a paragraph in the way.
+                    // Four lines, each answering one question, in a small face so they cost little
+                    // room. One line holding all four was smaller and read as noise: the warning
+                    // and the name of the thing you are holding are not the same kind of fact.
+
+                    // 1. Warnings, and only when there are any.
+                    val warnings = buildList {
+                        if (strays.isNotEmpty()) add("${strays.size} off screen")
+                        if (overlapping.isNotEmpty()) add("${overlapping.size} overlapping")
+                        if (underBars.isNotEmpty()) add("${underBars.size} under the bars")
+                        if (message.isNotBlank()) add(message)
+                    }
+                    if (warnings.isNotEmpty()) {
+                        Text(
+                            text = warnings.joinToString("   "),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = Color(0xFFF2B441),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    // 2. Which layout, which orientation, and whether it is saved.
                     Text(
-                        text = buildString {
-                            append(working.header.name)
-                            append(if (portrait) "  ·  portrait" else "  ·  landscape")
-                            if (dirty) append("  •")
-                            selected?.let { append("   ${it.id}") }
-                            if (strays.isNotEmpty()) append("   ${strays.size} off screen")
-                            if (underBars.isNotEmpty()) append("   ${underBars.size} under the bars")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
+                        text = working.header.name +
+                            (if (portrait) "  ·  portrait" else "  ·  landscape") +
+                            if (dirtyHere) "  •  unsaved" else "",
+                        style = MaterialTheme.typography.labelSmall,
                         fontFamily = FontFamily.Monospace,
                         textAlign = TextAlign.Center,
                     )
-                    if (message.isNotBlank()) {
-                        Text(
-                            text = message,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                    }
+
+                    // 3. What is selected.
+                    Text(
+                        text = selected?.let { "${it.id}  ·  ${it.kind.wireName}" }
+                            ?: "nothing selected",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                    )
+
+                    // 4. Where it is and how big, in both units.
+                    Text(
+                        text = selected?.summary(device, portrait) ?: " ",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         }
@@ -433,11 +509,9 @@ public fun LayoutEditorScreen(
                 },
                 onShape = { shape ->
                     working = working.replacing(menuElement.withShapeFor(portrait, shape))
-                    dirty = true
                 },
                 onStep = { updated ->
                     working = working.replacing(updated)
-                    dirty = true
                 },
                 onGroup = { step ->
                     val options = working.windowOptions()
@@ -448,7 +522,6 @@ public fun LayoutEditorScreen(
                             menuElement.withGroupStep(options, step)
                         }
                     )
-                    dirty = true
                 },
                 portrait = portrait,
                 onCopy = {
@@ -458,7 +531,6 @@ public fun LayoutEditorScreen(
                 onPaste = {
                     copied?.let { style ->
                         working = working.replacing(style.appliedTo(menuElement, portrait))
-                        dirty = true
                     }
                     menuFor = null
                 },
@@ -484,7 +556,6 @@ public fun LayoutEditorScreen(
                     layout = working,
                     onChange = { updated ->
                         working = updated
-                        dirty = true
                     },
                 )
 
@@ -524,17 +595,40 @@ public fun LayoutEditorScreen(
             onDismiss = { typingNumbers = false },
             onApply = { updated ->
                 working = working.replacing(updated)
-                dirty = true
                 typingNumbers = false
             },
         )
     }
 
     if (leaving) {
+        // Save writes one orientation, so leaving can lose work that is not the work on screen.
+        // The dialog names which arrangement is unsaved rather than saying "the arrangement",
+        // because the one that is about to be lost may be the one the phone is not showing.
+        val here = if (portrait) "portrait" else "landscape"
+        val other = if (portrait) "landscape" else "portrait"
         AlertDialog(
             onDismissRequest = { leaving = false },
-            title = { Text("Leave without saving?") },
-            text = { Text("The arrangement on screen has not been written to the file.") },
+            title = {
+                Text(
+                    if (dirtyOther && !dirtyHere) "Editing still pending" else "Leave without saving?"
+                )
+            },
+            text = {
+                Text(
+                    when {
+                        dirtyHere && dirtyOther ->
+                            "Neither arrangement has been written to the file. Save writes the " +
+                                "one on screen, so $other needs the phone turned to it and a " +
+                                "Save of its own."
+                        dirtyOther ->
+                            "The $here arrangement is saved, but $other still has changes that " +
+                                "are not in the file. Turn the phone to $other and save there, " +
+                                "or leave and lose them."
+                        else ->
+                            "The $here arrangement on screen has not been written to the file."
+                    }
+                )
+            },
             confirmButton = {
                 KButton(onClick = {
                     leaving = false
@@ -542,7 +636,15 @@ public fun LayoutEditorScreen(
                 }) { Text("Leave") }
             },
             dismissButton = {
-                TextButton(onClick = { leaving = false }) { Text("Stay") }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (dirtyOther) {
+                        TextButton(onClick = {
+                            leaving = false
+                            onPreviewOrientation(portrait)
+                        }) { Text("Go to $other") }
+                    }
+                    TextButton(onClick = { leaving = false }) { Text("Stay") }
+                }
             },
         )
     }
@@ -996,6 +1098,62 @@ private fun MenuHeader(title: String, detail: String, onDismiss: () -> Unit) {
 }
 
 private const val MENU_WIDTH = 380
+
+/**
+ * What one orientation of a document actually is: the header, the shared per-control fields, and
+ * the placement and shape that orientation draws with. Whether the control has a portrait
+ * arrangement of its own is part of it — giving portrait one leaves what it draws unchanged on the
+ * first frame, and without this the editor would call that "nothing has changed" and refuse to
+ * write it.
+ */
+private fun ControllerLayout.viewOf(portrait: Boolean): Any =
+    header to elements.map { element ->
+        listOf(
+            element.id,
+            element.kind,
+            element.binds,
+            element.label,
+            element.group,
+            element.placementFor(portrait),
+            element.shapeFor(portrait),
+            element.portraitPlacement != null,
+        )
+    }
+
+/** True when this document would draw [portrait] differently from [other]. */
+private fun ControllerLayout.differsFrom(other: ControllerLayout, portrait: Boolean): Boolean =
+    viewOf(portrait) != other.viewOf(portrait)
+
+/**
+ * The document to write when Save is pressed in one orientation: this orientation as it is on
+ * screen, and the other one as it is in the file.
+ *
+ * Shared fields — the header, the bindings, the window a control belongs to — are not per
+ * orientation and are written whichever way round the phone is. Two cases are not held back
+ * either. A control with no portrait arrangement of its own has exactly one arrangement, so
+ * editing it upright *is* editing landscape and there is nothing to keep separate. And giving or
+ * dropping a portrait arrangement is a change to the shape of the document rather than to one
+ * view of it, so that control is written whole.
+ */
+private fun ControllerLayout.mergedOver(
+    saved: ControllerLayout,
+    portrait: Boolean,
+): ControllerLayout = copy(
+    elements = elements.map { element ->
+        val was = saved.element(element.id) ?: return@map element
+        val separateNow = element.portraitPlacement != null
+        if (!separateNow || separateNow != (was.portraitPlacement != null)) {
+            element
+        } else if (portrait) {
+            element.copy(placement = was.placement, shape = was.shape)
+        } else {
+            element.copy(
+                portraitPlacement = was.portraitPlacement,
+                portraitShape = was.portraitShape,
+            )
+        }
+    }
+)
 
 // --- the tools -----------------------------------------------------------------------------------
 
@@ -1482,10 +1640,16 @@ private fun NumbersDialog(
                     height = round(numbers[3]!!),
                     rotationDegrees = current.rotationDegrees,
                 )
-                if (!wanted.resolve(device).shapedAs(element.effectiveShapeFor(portrait))
-                        .isWithin(device)
-                ) {
-                    problem = "That puts the control off the screen."
+                val shape = element.effectiveShapeFor(portrait)
+                if (!wanted.resolve(device).shapedAs(shape).isWithin(device)) {
+                    // The size check names the two numbers it will accept. This one used to say
+                    // only that the control was off the screen, which tells the user they are
+                    // wrong without telling them what right looks like — the project owner asked
+                    // for the same treatment here.
+                    problem = "That puts the control off the screen. At this size, from the " +
+                        "${wanted.anchor.wireName} anchor, " +
+                        offsetLimit(wanted, device, shape, horizontal = true) + " and " +
+                        offsetLimit(wanted, device, shape, horizontal = false) + "."
                     return@KButton
                 }
                 val candidate = Placement.of(
@@ -1672,6 +1836,52 @@ private fun ControllerLayout.clustersOn(
 /** Two decimals, the same as the file gets, so what is on screen is what will be written. */
 private fun round(value: Double): Double = Math.round(value * 100.0) / 100.0
 
+/**
+ * What one offset is allowed to be, in words, if the control is to stay on the screen at the size
+ * that was typed.
+ *
+ * Scanned rather than solved. The offset-to-pixels relation depends on the anchor and on the
+ * shape's own squaring-up, and a formula that has to agree with `resolve` and `shapedAs` is a
+ * second copy of both that will drift from them. It runs only after a value has been refused, so
+ * eight hundred cheap probes cost nothing anybody can feel.
+ *
+ * The two axes are independent: `isWithin` checks left/right against one pair of edges and
+ * top/bottom against the other, so a bad offsetY cannot make the offsetX range come out wrong.
+ */
+private fun offsetLimit(
+    wanted: Placement,
+    device: LayoutSurface,
+    shape: ControlShape,
+    horizontal: Boolean,
+): String {
+    val name = if (horizontal) "offsetX" else "offsetY"
+    var low: Double? = null
+    var high: Double? = null
+    var steps = 0
+    val total = (2 * Placement.MAX_OFFSET / 0.01).toInt()
+    while (steps <= total) {
+        val value = round(-Placement.MAX_OFFSET + steps * 0.01)
+        val rect = (
+            if (horizontal) wanted.copy(offsetX = value) else wanted.copy(offsetY = value)
+            ).resolve(device).shapedAs(shape)
+        val fits = if (horizontal) {
+            rect.left >= device.insetLeft && rect.right <= device.insetLeft + device.usableWidth
+        } else {
+            rect.top >= device.insetTop && rect.bottom <= device.insetTop + device.usableHeight
+        }
+        if (fits) {
+            if (low == null) low = value
+            high = value
+        }
+        steps++
+    }
+    return if (low == null || high == null) {
+        "$name has no value that fits — the control is too big for the screen this way"
+    } else {
+        "$name has to be between $low and $high"
+    }
+}
+
 // --- the canvas ----------------------------------------------------------------------------------
 
 /**
@@ -1714,6 +1924,8 @@ private fun EditorCanvas(
     portrait: Boolean,
     layout: ControllerLayout,
     selectedId: String?,
+    /** Controls sitting on top of another, drawn so that is visible rather than discovered. */
+    marked: Set<String>,
     /** While a menu is open, everything but this control is darkened. */
     dimExcept: String?,
     gridUnit: Double,
@@ -1900,7 +2112,11 @@ private fun EditorCanvas(
         // to go looking. Drawn faintly under the pad, it is simply visible while it happens.
         drawWindows(fitted, Clustering.group(layout, placed), selectedId)
         layout.elements.forEachIndexed { index, element ->
-            drawControl(fitted, element, livePortrait, placed[index].second, element.id == selectedId)
+            drawControl(
+                fitted, element, livePortrait, placed[index].second,
+                selected = element.id == selectedId,
+                marked = element.id in marked,
+            )
         }
         // The subject of the menu is the only thing left lit. Drawn here rather than as a scrim
         // behind the menu, because only the canvas knows where the control is.
@@ -1912,7 +2128,10 @@ private fun EditorCanvas(
             )
             val index = layout.elements.indexOfFirst { it.id == dimExcept }
             if (index >= 0) {
-                drawControl(fitted, layout.elements[index], livePortrait, placed[index].second, true)
+                drawControl(
+                    fitted, layout.elements[index], livePortrait, placed[index].second,
+                    selected = true, marked = false,
+                )
             }
         }
         // The anchor a selected control is measured from. An offset is a distance from a point, and
@@ -2224,6 +2443,7 @@ private fun DrawScope.drawControl(
     portrait: Boolean,
     rect: PixelRect,
     selected: Boolean,
+    marked: Boolean,
 ) {
     // A control that has left the screen is marked rather than moved. It is a real design to
     // run a shoulder button off an edge, and `ADR-007`'s spirit applies: say what is true, do not
@@ -2236,9 +2456,10 @@ private fun DrawScope.drawControl(
     val edge = when {
         selected -> Color(0xFF60BAFF)
         outside -> Color(0xFFE0603A)
+        marked -> Color(0xFFF2B441)
         else -> Color(0xFF0C0E12).copy(alpha = 0.60f)
     }
-    val stroke = if (selected || outside) 6f else 3f
+    val stroke = if (selected || outside || marked) 6f else 3f
     val centre = Offset(fit.left + rect.centerX.toFloat(), fit.top + rect.centerY.toFloat())
 
     when (element.effectiveShapeFor(portrait)) {

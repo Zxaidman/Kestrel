@@ -52,14 +52,14 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.38-dev`
+## State of the queue — build `0.0.39-dev`
 
 | Phase | Items |
 | --- | --- |
-| `done` | seventy-one, including `CRIT-5`–`CRIT-9` and `FEAT-15` |
+| `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
-| `testing` | `CRIT-10`, `BUG-44`, `BUG-45`, `FEAT-49`, `FEAT-51`–`FEAT-54` |
-| `building` | — |
+| `testing` | — |
+| `building` | `BUG-7`, `BUG-46`, `FEAT-55`–`FEAT-58` |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -464,7 +464,7 @@ still shown as it is.
 
 ### `FEAT-49` — The anchor's ninth of the screen, lit
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Asked for:** *"instead of just dot we now should also highlight… the region part which we have use
 grid to divide it."*
 
@@ -489,7 +489,7 @@ control is dragged there, and then the menu is on top of the control it is about
 
 ### `FEAT-51` — A control has a size a thumb can use
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Asked for:** *"button size should have min and max limit at 100% scale because button can go very
 small or big right now."*
 
@@ -505,7 +505,7 @@ the thing reading it.
 
 ### `FEAT-52` — Fading and hiding are two intervals, and two switches
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Asked for:** *"pad should have one more interval option never the twice, one for halftone and 2nd
 for hiding it"* and *"I also want different toggle for K button."*
 
@@ -538,10 +538,12 @@ joins in past about 1.15.
 
 ### `CRIT-10` — A new default, and what 50–150% actually costs
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` for the guarantee, confirmed on the reference device in `0.0.38-dev`: *"from 50%
+to 115% is good"*. The ceiling itself moved to 120% in `0.0.39-dev` — see `FEAT-55`.
 **Asked for:** *"create new default at 100% which can scale 50% and 150% respectively at default."*
 
-The range is in: **50% to 150%**, default 100%. The default layout is the project owner's
+The range shipped as **50% to 150%**, default 100%, and the ceiling came down to **120%** in
+`0.0.39-dev` once the guarantee was confirmed at 115%. The default layout is the project owner's
 arrangement with every size at 0.90 of what it was and every offset at 0.88 — measured, not chosen.
 
 **What could not be delivered, with the numbers.** A layout that is *guaranteed* clean at 150% has
@@ -570,7 +572,7 @@ arrangement on portrait screens.
 
 ### `BUG-44` — Typed numbers ignored every limit dragging obeys
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Found by:** Reported, build `0.0.37-dev`, points 8 and 9.
 
 Dragging clamped size and kept a control on the screen; the values dialog did neither, so a control
@@ -584,7 +586,7 @@ the screen, each with a message saying which.
 
 ### `BUG-45` — Hiding overtook fading
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Found by:** Reported, build `0.0.37-dev`. *"if i set both to 5s then it would hide it without ever
 going halftone."*
 
@@ -596,7 +598,7 @@ that arrives with the thing it warns about is not one.
 
 ### `FEAT-53` — The buttons minimise to one button
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Asked for:** *"instead of going halftone overlay and reactivating after button is click which does
 not solve the actual problem… minimize it to one single button which make be move just like floating
 button and click it reappear it on center default position with maximize view."*
@@ -612,12 +614,112 @@ on it is in the settings sheet, and a paragraph floating over the pad is a parag
 
 ### `FEAT-54` — The lit region agrees with the lines that mark it
 
-**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.38-dev`. What was built is described in `done-list.md`.
 **Asked for:** *"it should also snap with nearest grid just like our light divider line on grid… you
 can make it little bit more."*
 
 The dividers snap to the grid and the region did not, so the two disagreed by a few pixels about
 where the same ninth of the screen was. Both snap now, and the region is a little stronger.
+
+---
+
+### `FEAT-55` — The ceiling is 120%, and overlap above the guarantee is marked
+
+**Phase:** `building` — `0.0.39-dev`.
+**Reported and asked for:** build `0.0.38-dev`, points 1–4. *"from 50% to 115% is good above it
+overlapping but without editor marking it. for now I would say mark it as done set the limit at 120%
+max."*
+
+Two halves of one result. The measured guarantee stands: the shipped layout is clean from 50% to
+115% on the reference device, and `CRIT-10` is settled on that. Above 115% controls touch, which was
+always the expected cost of the range — **but the editor did not say so**, and a range whose top is
+unmarked is a range whose top is a surprise.
+
+- The ceiling drops from 150% to **120%**, so the unmarked-and-unsupported band is five points wide
+  rather than thirty-five.
+- The editor now finds every pair of controls whose resolved rectangles intersect, at the size the
+  pad is actually drawn at, and outlines both. It reports the count in the warning line.
+
+**Warning.** 115% is a measurement of *the shipped layout on one device*. A layout somebody arranges
+themselves has whatever ceiling its own spacing gives it, which is what the marking is for.
+
+---
+
+### `FEAT-56` — The off-screen refusal names the offsets it would accept
+
+**Phase:** `building` — `0.0.39-dev`.
+**Asked for:** build `0.0.38-dev`, points 5–7. *"now it's gives warning on size saying only between
+this value and that value is possible same should be followed for offset though it only give generic
+warning."*
+
+Typing a size that is out of range says which two numbers are allowed. Typing an offset that puts
+the control off the screen said only *"That puts the control off the screen"* — true, and no help at
+all in choosing a number that is not.
+
+It now names the range for each axis, at the size that was typed and from the anchor that is set.
+The range is **scanned** against the same `resolve` and `shapedAs` the drawing uses rather than
+derived from a formula: a second copy of that geometry is a second copy that will drift.
+
+---
+
+### `FEAT-57` — Four status lines, one fact each
+
+**Phase:** `building` — `0.0.39-dev`.
+**Asked for:** build `0.0.38-dev`, points 9–11. *"Keep the 4 status line Which was helpful before,
+You reduce the font size if you want. Reserve on for Warnings only show when needed / One for layout
+profile name / One for selected button name / And one for its size and position."*
+
+`FEAT-53` collapsed five lines to one to get a paragraph off the pad, and took four useful facts
+with it. They are back as four short lines in a small face:
+
+1. Warnings — strays, overlaps, controls under the bars, the last message — and **only when there
+   are any**.
+2. The layout's name, which orientation is being edited, and whether it is saved.
+3. What is selected.
+4. Its size and position, in both units.
+
+---
+
+### `BUG-46` — Save wrote both arrangements, not the one on screen
+
+**Phase:** `building` — `0.0.39-dev`.
+**Reported:** build `0.0.38-dev`. *"if I click save inside landscape with would save both of my
+layout at once, which is not good if I have messing layout in portrait same for vice-versa."*
+
+Since `FEAT-15` a layout holds two arrangements and the editor edits one at a time — but Save wrote
+the whole document. Arranging landscape carefully and pressing Save committed whatever half-moved
+state portrait happened to be in, with no warning and no way back short of editing it by hand.
+
+Save now writes **the orientation on screen** and puts the other one back as it is in the file. What
+was arranged in the other orientation stays in memory, still unsaved, until the phone is turned to
+it and Save is pressed there.
+
+Three things are deliberately *not* held back, because they are not per-orientation facts:
+
+- shared fields — the header, the bindings, the window a control belongs to;
+- a control with no portrait arrangement of its own, where editing upright **is** editing landscape
+  and there is nothing separate to keep;
+- giving or dropping a portrait arrangement, which changes the shape of the document rather than one
+  view of it, so that control is written whole.
+
+**Also fixed alongside it:** a save that failed used to clear the unsaved marker anyway, reporting
+work as filed while the file still held what it held before.
+
+---
+
+### `FEAT-58` — Leaving says which arrangement is still unsaved
+
+**Phase:** `building` — `0.0.39-dev`.
+**Asked for:** build `0.0.38-dev`. *"after this bug fixes if one layout is change and while other is
+save when user try to exit pop now should say editing still pending go to this view first or close
+it."*
+
+The consequence of `BUG-46`. Now that Save writes one orientation, Exit can lose work that is not
+the work on screen — and *"Leave without saving?"* would be describing the wrong arrangement.
+
+The dialog names it: which one is unsaved, that Save writes only the one on screen, and it offers a
+**Go to landscape** / **Go to portrait** button that turns the phone to the pending one instead of
+leaving.
 
 ---
 
@@ -724,7 +826,17 @@ worth paying, which would be a measured experiment rather than a code change.
 
 ### `BUG-7` — The trigger's clockwise border sweep should go
 
-**Phase:** `pending`
+**Phase:** `building` — `0.0.39-dev`. The next item in the project owner's order of work.
+
+**Built.** The edge now fills bottom-to-top in the control's own shape, the same way the face does,
+for every shape. The circle's sweep is gone.
+
+**A choice inside the request, stated because it could have gone the other way.** *"Keep the
+bottom-to-top fill alone"* could mean drop the edge highlight entirely. The edge was kept and made
+to fill in the same direction instead, because the reason it exists still holds: a fill inside a
+small control is exactly the part of it a thumb is covering, so a trigger with only a face fill is
+unreadable while it is being pressed. If the project owner wants the edge gone as well, that is one
+line.
 
 **Found by:** Reported, build `0.0.25-dev`.
 
@@ -2281,6 +2393,28 @@ already recorded in `CHANGELOG.md`. Nothing has been acted on and nothing has be
 | 10 | Fade then hide | Working; hiding should be its own interval → `FEAT-52` |
 | 11 | Regression | `BUG-42`. Also: sizes need limits and a control should not leave the screen → `FEAT-51`, `BUG-43` |
 
+
+### Round `0.0.38-dev` — the range is measured, and the editor has to say so
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–4 | The scale range and the new default | **Working** 50%–115%. Above it controls meet and the editor did not mark them → `FEAT-55`, and the ceiling comes down to 120% |
+| 5–7 | Typed limits | **Working**; the size refusal names its numbers and the offset refusal did not → `FEAT-56` |
+| 8 | Fade then hide | **Working** |
+| 9–11 | The minimised block | **Working**, but four status lines were lost with the paragraph → `FEAT-57` |
+| 12–13 | The lit region, the anchor | **Working** |
+
+**Reported, and it predates this round:** Save in one orientation wrote both arrangements →
+`BUG-46`, and the exit dialog that follows from it → `FEAT-58`.
+
+### Decisions this round
+
+- **The guarantee is 115% and the ceiling is 120%.** The project owner accepted the measured
+  guarantee rather than shrinking the pad further to reach a rounder number, and cut the unmarked
+  band from thirty-five points to five.
+- **A refusal names what it would accept.** Applied to offsets now; the rule is general.
+
+---
 
 ### Awaiting
 

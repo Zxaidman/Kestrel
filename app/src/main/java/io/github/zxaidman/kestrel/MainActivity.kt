@@ -315,13 +315,21 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Writes the edited layout, and hands it straight to the controls if they are on screen. */
-    private fun saveEditedLayout(layout: io.github.zxaidman.kestrel.core.layout.ControllerLayout): String =
+    private fun saveEditedLayout(
+        layout: io.github.zxaidman.kestrel.core.layout.ControllerLayout,
+    ): io.github.zxaidman.kestrel.feature.editor.SaveOutcome =
         when (val saved = layoutRepository().save(layout)) {
             is io.github.zxaidman.kestrel.core.common.Outcome.Failure ->
-                "Not saved: ${saved.error.message}"
+                io.github.zxaidman.kestrel.feature.editor.SaveOutcome(
+                    written = false,
+                    message = "Not saved: ${saved.error.message}",
+                )
             is io.github.zxaidman.kestrel.core.common.Outcome.Success -> {
                 io.github.zxaidman.kestrel.platform.session.SessionState.overlay?.apply(layout)
-                "Saved to layouts/${layout.header.id.value}.json."
+                io.github.zxaidman.kestrel.feature.editor.SaveOutcome(
+                    written = true,
+                    message = "Saved to layouts/${layout.header.id.value}.json.",
+                )
             }
         }
 
