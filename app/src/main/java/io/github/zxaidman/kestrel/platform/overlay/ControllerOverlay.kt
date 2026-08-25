@@ -398,9 +398,11 @@ public class ControllerOverlay(
             clusters.forEach { it.alpha = 1f }
             return
         }
-        // Two intervals rather than one and its double. Fading and disappearing are different
-        // amounts of getting out of the way, and hiding can be asked for long after fading.
-        if (quiet >= maxOf(hideAfterMs(), fadeAfterMs())) {
+        // Hiding is counted **from the fade**, not from the last touch. Set both to five seconds
+        // and the old arithmetic hid the pad at five without it ever having faded — the second
+        // stage overtook the first. Fading is a warning that hiding is coming, and a warning that
+        // arrives with the thing it warns about is not one.
+        if (quiet >= fadeAfterMs() + hideAfterMs()) {
             // Everything is released on the way out, which `hideControls` already does — a control
             // that vanishes mid-press leaves nothing behind able to let go of it.
             hideControls()

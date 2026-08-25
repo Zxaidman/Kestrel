@@ -585,77 +585,67 @@ dragging at all, which is `BUG-42`: a regression introduced by the fix beside it
 
 ---
 
-## Built, awaiting confirmation — `0.0.37-dev`
+### `CRIT-9`, `BUG-42`, `BUG-43`, `FEAT-50` — **closed `0.0.37-dev`**
 
-### `CRIT-9` — `R3` moved, the ceiling is 1.05, and last round's number was wrong
-
-`stick.right.press` goes 0.18 → 0.20 and `MAX_CONTROL_SCALE` 1.00 → **1.05**, measured on four screen
-shapes.
-
-**The correction matters more than the change.** Last round said this would raise the ceiling to
-about 1.15, and the project owner made a decision on that number. It is 1.05. The estimate was
-arithmetic on the layout *before* it was rounded to two decimals, and it checked overlap without
-checking whether controls stayed on the screen.
-
-**Why it cannot be nudged much further:** `R3` and `Start` sit on the same edge, one anchored to the
-bottom and one to the top, so growing the pad brings them together however far apart they are at the
-default. Another 0.02 buys 1.07 and `R3` meets `R2` instead.
-
-Unverified on the device.
+`R3` moved and the ceiling reached 1.05 — after a correction, because the estimate given the round
+before was 1.15 and the project owner decided on it. The block drags again. A control cannot be
+dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
-### `BUG-42` — The block drags again
+---
 
-A value derived from two states, captured by a gesture keyed on neither: every frame added its delta
-to the position from when the drag began, so nothing moved. **The same trap the canvas's own drag was
-written to avoid**, with the note explaining why a few hundred lines away in the same file. It reads
-through `rememberUpdatedState` now, like the canvas does. Unverified.
+## Built, awaiting confirmation — `0.0.38-dev`
+
+### `CRIT-10` — 50% to 150%, and what it costs
+
+The range is in and the default layout is re-authored: every size at 0.90 of what it was, every
+offset at 0.88 — measured rather than chosen.
+
+**The promise is 50%–115%, not 50%–150%, and the arithmetic is why.** A layout guaranteed clean at
+150% must be small enough at 100% that half again still fits, and controls anchored to opposite
+edges move towards each other as the pad grows. Face buttons would have to be about 5 mm across. The
+default is 6.3 mm and clean to 115%; above that the slider still goes and the editor marks what
+meets.
+
+**A test was checking the wrong thing.** `BuiltInLayoutsTest` validated the **landscape**
+arrangement on portrait surfaces, which since `FEAT-15` is not what a portrait screen draws — so a
+portrait arrangement could overlap itself and pass. The search that produced this default was wrong
+until the pairing was fixed, and a test now checks the portrait arrangement on portrait screens.
+
+Unverified on a device.
 
 ---
 
-### `BUG-43` — A control cannot be dragged off the screen
+### `BUG-44` — Typed numbers obey the limits dragging obeys
 
-It was allowed off, with a warning and a button to bring it back — a fault offered, reported, then
-undone, where none of the three steps was needed.
+Dragging clamped size and kept a control on screen; the dialog did neither, so a control 0.9 of the
+screen wide and half of it off the edge could be typed in. **Two rules for one thing, and the one
+nobody sees wins.** The dialog refuses both now, saying which. Unverified.
 
-**This reverses a stated position and the reversal is right.** The old reasoning was `ADR-007`'s
-spirit: say what is true rather than overrule the person. That applies to what a *file* may contain.
-It does not apply to what a *drag* may do. A layout from elsewhere is still read and still shown as
-it is.
+---
+
+### `BUG-45` — Fading is a warning again
+
+Hiding was counted from the last touch, so equal intervals made the second stage arrive with the
+first. It is counted from the fade. Unverified.
+
+---
+
+### `FEAT-53` — The buttons minimise rather than fade
+
+Fading solved the wrong problem, as the project owner said: a faded block is still catchable by a
+thumb and still on top of what it covers. Minimised, it is one draggable button; tapping it brings
+the block back to the middle. The block is opaque and says one line instead of five.
 
 Unverified.
 
 ---
 
-### `FEAT-49` — The anchor's ninth of the screen
+### `FEAT-49`, `FEAT-51`, `FEAT-52`, `FEAT-54` — carried and adjusted
 
-A dot at a corner is a dot where the glass is rounded off, so a bigger inset only makes it a dot in
-slightly the wrong place. The region is lit instead — very faint, and **under** the controls, because
-a hint that obscures the thing it is about is worse than no hint. The dot stays, further in.
-Unverified.
-
----
-
-### `FEAT-50` — The control menu moves
-
-Draggable like the block, and for the same reason: it opens in the middle, which is where a pad never
-is — until a control is dragged there. Unverified.
-
----
-
-### `FEAT-51` — Sizes a thumb can use
-
-The editor stops at 0.06 and 0.60 of the shorter side. `Placement`'s own 0.01 and 2.0 exist to catch
-a corrupt file — half a millimetre and twice the screen — and **they stay where they are**: refusing
-to open a layout over a matter of taste is worse than showing what it says. Unverified.
-
----
-
-### `FEAT-52` — Four settings where there were two
-
-The controls fade and hide on their own intervals, and the controls and the toggle each have their
-own switch. Hiding at twice the fade was one number pretending to be two. Unverified.
+The anchor region is lit and now snaps to the same grid the dividers do, a little stronger. Editor
+sizes stop at 0.05 and 0.50. The idle settings are four. All unverified in their adjusted form.
 
 ---
 

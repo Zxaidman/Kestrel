@@ -106,6 +106,7 @@ class BuiltInLayoutsTest {
             KestrelSettings.MIN_CONTROL_SCALE,
             0.75,
             KestrelSettings.DEFAULT_CONTROL_SCALE,
+            KestrelSettings.GUARANTEED_CONTROL_SCALE,
         )
         return surfaces.flatMap { surface -> scales.map { surface to it } }
     }
@@ -150,6 +151,47 @@ class BuiltInLayoutsTest {
     }
 
     @Test
+    fun `the portrait arrangement is checked on portrait screens, which is where it is used`() {
+        // The other check uses `placement` on every surface, which is the landscape arrangement —
+        // and since `FEAT-15` that is not what a portrait screen draws. A layout can therefore pass
+        // that check with a portrait arrangement that overlaps itself, which is exactly what nearly
+        // shipped: the search that produced this default was wrong until the pairing was fixed.
+        val tall = listOf(LayoutSurface(1080.0, 2400.0), LayoutSurface(1080.0, 2216.0))
+        val scales = listOf(
+            KestrelSettings.MIN_CONTROL_SCALE,
+            KestrelSettings.DEFAULT_CONTROL_SCALE,
+            KestrelSettings.GUARANTEED_CONTROL_SCALE,
+        )
+        tall.forEach { surface ->
+            scales.forEach { scale ->
+                val placed = xbox().elements.map {
+                    it.id to it.placementFor(portrait = true).scaledBy(scale).resolve(surface)
+                }
+                placed.forEach { (id, rect) ->
+                    assertTrue(
+                        rect.isWithin(surface),
+                        "'$id' leaves a portrait screen at ${scale.times(100).toInt()}%",
+                    )
+                }
+                for (i in placed.indices) {
+                    for (j in i + 1 until placed.size) {
+                        val (leftId, left) = placed[i]
+                        val (rightId, right) = placed[j]
+                        val apart = hypot(left.centerX - right.centerX, left.centerY - right.centerY)
+                        val touching = minOf(left.width, left.height) / 2 +
+                            minOf(right.width, right.height) / 2
+                        assertTrue(
+                            apart >= touching,
+                            "'$leftId' and '$rightId' overlap upright at " +
+                                "${scale.times(100).toInt()}%",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `the default size reproduces the arrangement measured on the reference device`() {
         // The arrangement the project owner sent, at the size they settled on. Face buttons come
         // out 104px across on a 1080px short side — the old 112px at the old 85%, restated in the
@@ -159,7 +201,7 @@ class BuiltInLayoutsTest {
         val rect = faceA.placement
             .scaledBy(KestrelSettings.DEFAULT_CONTROL_SCALE)
             .resolve(surface)
-        assertEquals(104.0, rect.width, 5.0, "the default size no longer matches the tested pad")
+        assertEquals(94.0, rect.width, 5.0, "the default size no longer matches the tested pad")
     }
 
     @Test

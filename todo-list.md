@@ -52,13 +52,13 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.37-dev`
+## State of the queue — build `0.0.38-dev`
 
 | Phase | Items |
 | --- | --- |
-| `done` | sixty-seven, including `CRIT-5`–`CRIT-8` and `FEAT-15` |
+| `done` | seventy-one, including `CRIT-5`–`CRIT-9` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
-| `testing` | `CRIT-9`, `BUG-42`, `BUG-43`, `FEAT-49`–`FEAT-52` |
+| `testing` | `CRIT-10`, `BUG-44`, `BUG-45`, `FEAT-49`, `FEAT-51`–`FEAT-54` |
 | `building` | — |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
@@ -432,7 +432,7 @@ prevents is a pad silently a fifth smaller. It can be removed on request.
 
 ### `BUG-42` — The floating block stopped dragging entirely
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Found by:** Reported, build `0.0.36-dev`. A regression from `BUG-41` in the same round it was
 built.
 
@@ -448,7 +448,7 @@ mechanism now.
 
 ### `BUG-43` — A control could still be dragged off the screen
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"so is position button should never go outside screen."*
 
 It was allowed off, with a warning and a button to bring it back. That is a fault offered, then
@@ -464,7 +464,7 @@ still shown as it is.
 
 ### `FEAT-49` — The anchor's ninth of the screen, lit
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Asked for:** *"instead of just dot we now should also highlight… the region part which we have use
 grid to divide it."*
 
@@ -479,7 +479,7 @@ about is worse than no hint. The dot stays, further in.
 
 ### `FEAT-50` — The control menu can be moved too
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"make gamepad dialog also draggable like floating button."*
 
 Same reason as the block: it opens in the middle, which is the one place a pad never is — until a
@@ -489,7 +489,7 @@ control is dragged there, and then the menu is on top of the control it is about
 
 ### `FEAT-51` — A control has a size a thumb can use
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Asked for:** *"button size should have min and max limit at 100% scale because button can go very
 small or big right now."*
 
@@ -505,7 +505,7 @@ the thing reading it.
 
 ### `FEAT-52` — Fading and hiding are two intervals, and two switches
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
 **Asked for:** *"pad should have one more interval option never the twice, one for halftone and 2nd
 for hiding it"* and *"I also want different toggle for K button."*
 
@@ -517,7 +517,7 @@ to be two.
 
 ### `CRIT-9` — `R3` moved, and the ceiling is 1.05 — with a correction
 
-**Phase:** `testing` — built in `0.0.37-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Phase:** `done` — confirmed on the device. Written up in `done-list.md`.
 **Asked for:** *"move R3 by 0.02 and raise the max."*
 
 Done: `stick.right.press` goes from 0.18 to 0.20, and `MAX_CONTROL_SCALE` from 1.00 to **1.05**,
@@ -533,6 +533,91 @@ was wrong by 10%.
 to the bottom and one to the top, so **growing the pad brings them together** however far apart they
 are drawn at the default. Another 0.02 buys 1.07 and then `R3` meets `R2` instead. The left column
 joins in past about 1.15.
+
+---
+
+### `CRIT-10` — A new default, and what 50–150% actually costs
+
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"create new default at 100% which can scale 50% and 150% respectively at default."*
+
+The range is in: **50% to 150%**, default 100%. The default layout is the project owner's
+arrangement with every size at 0.90 of what it was and every offset at 0.88 — measured, not chosen.
+
+**What could not be delivered, with the numbers.** A layout that is *guaranteed* clean at 150% has
+to be small enough at 100% that half again still fits, and controls anchored to opposite edges move
+towards each other as the pad grows. Measured across both orientations and four screen shapes:
+
+| face button at 100% | clean up to |
+| --- | --- |
+| 7.0 mm | 1.00 |
+| **6.3 mm** | **1.15** |
+| 5.6 mm | 1.25 |
+| 4.9 mm | 1.45 |
+
+A pad with five-millimetre face buttons is not worth shipping to reach a number. So the default sits
+at 6.3 mm, and **the promise is 50%–115%**: clean, in both orientations, on four screen shapes.
+Between 115% and 150% the slider still goes and controls may meet — the editor marks them, which is
+what it is for.
+
+**A test was wrong and is fixed.** `BuiltInLayoutsTest` checked the **landscape** arrangement on
+every surface including portrait ones — since `FEAT-15` that is not what a portrait screen draws, so
+a layout could pass with a portrait arrangement that overlapped itself. The search that produced this
+default was wrong until the pairing was corrected, and there is now a test that checks the portrait
+arrangement on portrait screens.
+
+---
+
+### `BUG-44` — Typed numbers ignored every limit dragging obeys
+
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.37-dev`, points 8 and 9.
+
+Dragging clamped size and kept a control on the screen; the values dialog did neither, so a control
+0.9 of the screen wide and half of it off the edge could be typed straight in. **Two rules for one
+thing, and the one nobody sees wins.**
+
+The dialog now refuses a size outside the editor's range and a position that puts the control off
+the screen, each with a message saying which.
+
+---
+
+### `BUG-45` — Hiding overtook fading
+
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Found by:** Reported, build `0.0.37-dev`. *"if i set both to 5s then it would hide it without ever
+going halftone."*
+
+Hiding was counted from the last touch, so equal intervals meant the second stage arrived with the
+first. It is counted **from the fade** now: fading is a warning that hiding is coming, and a warning
+that arrives with the thing it warns about is not one.
+
+---
+
+### `FEAT-53` — The buttons minimise to one button
+
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"instead of going halftone overlay and reactivating after button is click which does
+not solve the actual problem… minimize it to one single button which make be move just like floating
+button and click it reappear it on center default position with maximize view."*
+
+The project owner is right that fading solved the wrong problem: a faded block is still there to be
+caught by a thumb and still on top of whatever it was covering. Minimised, it is one draggable
+button; tapping it brings the block back to the middle.
+
+The block is also **opaque** now and says one line instead of five — everything that was spelled out
+on it is in the settings sheet, and a paragraph floating over the pad is a paragraph in the way.
+
+---
+
+### `FEAT-54` — The lit region agrees with the lines that mark it
+
+**Phase:** `testing` — built in `0.0.38-dev`, awaiting a device result. What was built is described in `done-list.md`.
+**Asked for:** *"it should also snap with nearest grid just like our light divider line on grid… you
+can make it little bit more."*
+
+The dividers snap to the grid and the region did not, so the two disagreed by a few pixels about
+where the same ninth of the screen was. Both snap now, and the region is a little stronger.
 
 ---
 

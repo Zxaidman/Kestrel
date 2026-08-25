@@ -13,6 +13,40 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.38-dev` — Fifty To A Hundred And Fifty, And What That Costs
+
+**The size range is 50% to 150% and the guarantee is 50% to 115%.** Those are different numbers on
+purpose. A layout guaranteed clean at 150% has to be small enough at 100% that half again still
+fits, and controls anchored to opposite edges move *towards* each other as the pad grows. Measured
+in both orientations on four screen shapes: face buttons of 7.0 mm are clean to 100%, 6.3 mm to
+115%, 5.6 mm to 125%, and 4.9 mm to 145%. A pad with five-millimetre face buttons is not worth
+shipping to reach a number, so the default is 6.3 mm — every size at 0.90 of what it was and every
+offset at 0.88 — and above 115% the slider still goes while the editor marks what meets.
+
+**A test was checking the wrong arrangement.** `BuiltInLayoutsTest` validated the landscape
+placements on portrait surfaces, which since `FEAT-15` is not what a portrait screen draws — so a
+portrait arrangement could overlap itself and pass. The first search for this default was wrong until
+that was found, and there is now a test that checks the portrait arrangement on portrait screens.
+
+**Typed numbers ignored every limit dragging obeys.** A control 0.9 of the screen wide with half of
+it off the edge could be typed straight into the values dialog, while dragging refused both. Two
+rules for one thing, and the one nobody sees wins.
+
+**Hiding overtook fading.** Set both intervals to five seconds and the pad vanished at five without
+ever having faded, because hiding counted from the last touch rather than from the fade. Fading is a
+warning that hiding is coming, and a warning that arrives with the thing it warns about is not one.
+
+**The editor's buttons minimise instead of fading.** Fading solved the wrong problem — a faded block
+is still catchable by a thumb and still on top of what it covers. Minimised it is one draggable
+button, and tapping it brings the block back to the middle. The block is opaque now and says one
+line where it used to say five; everything it spelled out is in the settings sheet.
+
+Also: the lit anchor region snaps to the same grid the dividers do, so the two stop disagreeing about
+where a ninth of the screen is; and the editor's size limits come in to 0.05 and 0.50.
+
+**Seventy-one items `done`.**
+
+
 ### `0.0.37-dev` — A Wrong Number, Corrected
 
 **Last round's estimate was wrong and a decision was made on it.** Moving `R3` was said to raise the

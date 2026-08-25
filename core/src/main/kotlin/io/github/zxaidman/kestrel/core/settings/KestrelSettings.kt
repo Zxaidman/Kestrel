@@ -80,24 +80,32 @@ public data class KestrelSettings(
         public const val DEFAULT_CONTROL_SCALE: Double = 1.00
         public const val MIN_CONTROL_SCALE: Double = 0.50
         /**
-         * As far as the size setting goes, and it is deliberately the same as the default.
+         * As far as the size setting goes: **half to half again**, as the project owner asked.
          *
-         * The project owner's judgement, and the measurement agrees: 200% was overdoing it. A
-         * maximum the shipped layout cannot survive is a maximum that ships a broken pad to anyone
-         * who drags the slider up.
+         * What is **guaranteed** is narrower than what is allowed, and the difference is measured
+         * rather than assumed. The shipped layout is clean — nothing overlapping, nothing off the
+         * screen, in both orientations, on four screen shapes — from [MIN_CONTROL_SCALE] to
+         * **1.15**. Between there and 1.50 controls may meet, and the editor marks them.
          *
-         * **1.05, measured** on four screen shapes with `R3` moved 0.02 as the project owner asked.
-         * What binds is `R3` against `Start`: they are on the same edge, one anchored to the bottom
-         * and one to the top, so growing the pad brings them together no matter how far apart they
-         * are drawn at the default. Moving `R3` a further 0.02 buys 1.07 and then it meets `R2`
-         * instead.
+         * **Why the guarantee stops there, with the numbers.** Growing the pad grows the gaps
+         * between clusters at the same rate as the controls, but a control anchored to the bottom
+         * and one anchored to the top move *towards each other* — the screen does not grow with
+         * them. Reaching 150% cleanly costs the default this much:
          *
-         * **A correction:** the previous round said this change would raise the ceiling to about
-         * 1.15. That was arithmetic on the layout before it was rounded to two decimals, and it
-         * checked overlap without checking whether a control stayed on the screen. The measured
-         * answer is 1.05.
+         * | face button at 100% | clean up to |
+         * | --- | --- |
+         * | 7.0 mm | 1.00 |
+         * | 6.3 mm | 1.15 |
+         * | 5.6 mm | 1.25 |
+         * | 4.9 mm | 1.45 |
+         *
+         * A pad whose face buttons are five millimetres across is not a pad worth shipping to reach
+         * a number, so the default sits at 6.3 mm and 1.50 is headroom rather than a promise.
          */
-        public const val MAX_CONTROL_SCALE: Double = 1.05
+        public const val MAX_CONTROL_SCALE: Double = 1.50
+
+        /** The largest size the shipped layout is *guaranteed* clean at. Measured, not chosen. */
+        public const val GUARANTEED_CONTROL_SCALE: Double = 1.15
     }
 }
 

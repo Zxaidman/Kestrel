@@ -220,6 +220,26 @@ public fun LayoutEditorScreen(
         if (portrait) it.controlScalePortrait else it.controlScale
     }.toFloat()
 
+    // Controls that have ended up somewhere they cannot be used. Kept even though dragging can no
+    // longer put one off the screen: a hand-written file, a layout from somewhere else, or a bug
+    // nobody has met yet can all still do it, and the project owner asked for the way back to stay.
+    val strays = working.elements.filter { element ->
+        !element.placementFor(portrait).scaledBy(controlScale.toDouble()).resolve(device)
+            .shapedAs(element.effectiveShapeFor(portrait))
+            .isWithin(device)
+    }.map { it.id }
+
+    // Controls in the strip the system bars take. They work while a game is full screen and not
+    // while the bars are showing, which is worth counting rather than explaining twice.
+    val underBars = bars?.let { band ->
+        working.elements.filter { element ->
+            val rect = element.placementFor(portrait).scaledBy(controlScale.toDouble())
+                .resolve(device).shapedAs(element.effectiveShapeFor(portrait))
+            rect.top < band.top || rect.bottom > band.bottom ||
+                rect.left < band.left || rect.right > band.right
+        }.map { it.id }
+    }.orEmpty()
+
     Box(modifier = Modifier.fillMaxSize().onSizeChanged { rootSize = it }) {
         EditorCanvas(
             modifier = Modifier.fillMaxSize(),
@@ -253,133 +273,126 @@ public fun LayoutEditorScreen(
         // The middle of the screen, which is the one place a pad never is: controls belong to the
         // corners and edges a thumb reaches, and the centre is what a game is played through.
         // Anywhere else and these would sit on top of the thing being arranged.
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset { IntOffset(panel.x.roundToInt(), panel.y.roundToInt()) }
-                .onSizeChanged { panelSize = it }
-                .graphicsLayer { alpha = if (panelHidden) HIDDEN_PANEL_ALPHA else 1f }
-                .then(
-                    // A hidden panel is a picture, not a thing: it takes no touches at all, so the
-                    // pad underneath can be worked on through it.
-                    if (panelHidden) {
-                        Modifier
-                    } else {
-                        Modifier.pointerInput(rootSize, panelSize) {
-                            detectDragGestures { change, dragged ->
-                                change.consume()
-                                // Kept on the screen. It is centred, so its travel each way is half
-                                // the screen less half of itself — drag it off the edge and Save and
-                                // Exit go with it.
-                                val limitX = max(0f, (rootSize.width - panelSize.width) / 2f)
-                                val limitY = max(0f, (rootSize.height - panelSize.height) / 2f)
-                                val moved = Offset(
-                                    (livePanel.x + dragged.x).coerceIn(-limitX, limitX),
-                                    (livePanel.y + dragged.y).coerceIn(-limitY, limitY),
-                                )
-                                if (livePanelPortrait) panelPortrait = moved else panelLandscape = moved
-                            }
-                        }.pointerInput(Unit) {
-                            detectTapGestures(onLongPress = { panelMenu = true })
+        if (panelHidden) {
+            // Minimised: one button, draggable like the block was, and a tap brings the block back
+            // to the middle at full size. Fading it to a fifth and leaving it in place solved the
+            // wrong problem — it was still there to be caught by a thumb, and it was still on top
+            // of whatever it had been covering.
+            FloatingActionButton(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset { IntOffset(panel.x.roundToInt(), panel.y.roundToInt()) }
+                    .onSizeChanged { panelSize = it }
+                    .pointerInput(rootSize, panelSize) {
+                        detectDragGestures { change, dragged ->
+                            change.consume()
+                            val limitX = max(0f, (rootSize.width - panelSize.width) / 2f)
+                            val limitY = max(0f, (rootSize.height - panelSize.height) / 2f)
+                            val moved = Offset(
+                                (livePanel.x + dragged.x).coerceIn(-limitX, limitX),
+                                (livePanel.y + dragged.y).coerceIn(-limitY, limitY),
+                            )
+                            if (livePanelPortrait) panelPortrait = moved else panelLandscape = moved
+                        }
+                    },
+                onClick = {
+                    panelHidden = false
+                    if (portrait) panelPortrait = Offset.Zero else panelLandscape = Offset.Zero
+                },
+            ) { Icon(Icons.Filled.Settings, contentDescription = "Show the editor buttons") }
+        } else {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset { IntOffset(panel.x.roundToInt(), panel.y.roundToInt()) }
+                    .onSizeChanged { panelSize = it }
+                    .pointerInput(rootSize, panelSize) {
+                        detectDragGestures { change, dragged ->
+                            change.consume()
+                            val limitX = max(0f, (rootSize.width - panelSize.width) / 2f)
+                            val limitY = max(0f, (rootSize.height - panelSize.height) / 2f)
+                            val moved = Offset(
+                                (livePanel.x + dragged.x).coerceIn(-limitX, limitX),
+                                (livePanel.y + dragged.y).coerceIn(-limitY, limitY),
+                            )
+                            if (livePanelPortrait) panelPortrait = moved else panelLandscape = moved
                         }
                     }
-                )
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val strays = working.elements.filter { element ->
-                !element.placementFor(portrait).scaledBy(controlScale.toDouble()).resolve(device)
-                    .shapedAs(element.effectiveShapeFor(portrait))
-                    .isWithin(device)
-            }.map { it.id }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FloatingActionButton(onClick = { toolsOpen = true }) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                }
-                // Turning the phone is done *while* arranging, not configured beforehand, so it
-                // does not belong two taps deep in a sheet.
-                FloatingActionButton(
-                    onClick = { onPreviewOrientation(!landscape) },
-                ) { Icon(Icons.Filled.Refresh, contentDescription = "Turn the phone") }
-                // Only when there is something to rescue. A button that is always there for a case
-                // that almost never happens is a button in the way; one that appears when it is
-                // needed is an offer of help.
-                if (strays.isNotEmpty()) {
-                    FloatingActionButton(
-                        containerColor = Color(0xFFE0603A),
-                        onClick = {
-                            working = working.withStraysBroughtBack(strays, portrait)
-                            dirty = true
-                            message = "${strays.size} put back where the built-in has them."
-                        },
-                    ) { Icon(Icons.Filled.Home, contentDescription = "Bring strays back") }
-                }
-                FloatingActionButton(
-                    containerColor = if (dirty) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
+                    .pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { panelMenu = true })
                     },
-                    onClick = {
-                        message = if (dirty) {
-                            dirty = false
-                            onSave(working)
-                        } else {
-                            "Nothing has changed."
+                // Opaque, and a window rather than a wash. Translucent, it was still catching
+                // thumbs meant for the pad behind it, which is a control you cannot see being
+                // pressed by mistake.
+                shape = MaterialTheme.shapes.large,
+                tonalElevation = 6.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FloatingActionButton(onClick = { toolsOpen = true }) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
                         }
-                    },
-                ) { Text("Save") }
-                FloatingActionButton(
-                    onClick = { if (dirty) leaving = true else onClose() },
-                ) { Text("Exit") }
-            }
+                        FloatingActionButton(
+                            onClick = { onPreviewOrientation(!landscape) },
+                        ) { Icon(Icons.Filled.Refresh, contentDescription = "Turn the phone") }
+                        if (strays.isNotEmpty()) {
+                            FloatingActionButton(
+                                containerColor = Color(0xFFE0603A),
+                                onClick = {
+                                    working = working.withStraysBroughtBack(strays, portrait)
+                                    dirty = true
+                                    message = "${strays.size} put back."
+                                },
+                            ) { Icon(Icons.Filled.Home, contentDescription = "Bring strays back") }
+                        }
+                        FloatingActionButton(
+                            containerColor = if (dirty) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            onClick = {
+                                message = if (dirty) {
+                                    dirty = false
+                                    onSave(working)
+                                } else {
+                                    "Nothing has changed."
+                                }
+                            },
+                        ) { Text("Save") }
+                        FloatingActionButton(
+                            onClick = { if (dirty) leaving = true else onClose() },
+                        ) { Text("Exit") }
+                    }
 
-            // The band is not a warning by itself — a control there is fine while a game is
-            // full screen, which is nearly always. It stops being fine the moment the bars are
-            // showing, and that is worth naming rather than leaving to be discovered mid-play.
-            val underBars = bars?.let { band ->
-                working.elements.filter { element ->
-                    val rect = element.placementFor(portrait)
-                        .scaledBy(controlScale.toDouble())
-                        .resolve(device)
-                        .shapedAs(element.effectiveShapeFor(portrait))
-                    rect.top < band.top || rect.bottom > band.bottom ||
-                        rect.left < band.left || rect.right > band.right
-                }.map { it.id }
-            }.orEmpty()
-
-            if (bars != null) {
-                Caption(
-                    text = if (underBars.isEmpty()) {
-                        "The lighter band is where the system bars and the camera cutout are."
-                    } else {
-                        "${underBars.size} in the lighter band. They work while a game is full " +
-                            "screen — but while the status bar or the gesture bar is showing, the " +
-                            "system takes those touches and Kestrel never sees them."
-                    },
-                    colour = if (underBars.isEmpty()) Color(0xFFE8EBEF) else Color(0xFFF2B441),
-                    modifier = Modifier.widthIn(max = 340.dp),
-                )
+                    // One line, not five. Everything that was spelled out here is in the settings
+                    // sheet, and a paragraph floating over the pad is a paragraph in the way.
+                    Text(
+                        text = buildString {
+                            append(working.header.name)
+                            append(if (portrait) "  ·  portrait" else "  ·  landscape")
+                            if (dirty) append("  •")
+                            selected?.let { append("   ${it.id}") }
+                            if (strays.isNotEmpty()) append("   ${strays.size} off screen")
+                            if (underBars.isNotEmpty()) append("   ${underBars.size} under the bars")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                    )
+                    if (message.isNotBlank()) {
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                }
             }
-            Caption(
-                text = working.header.name +
-                    (if (portrait) "  ·  portrait" else "  ·  landscape") +
-                    if (dirty) "  •  unsaved" else "",
-                modifier = Modifier.widthIn(max = 320.dp),
-            )
-            selected?.let {
-                Caption(text = it.summary(device, portrait), modifier = Modifier.widthIn(max = 320.dp))
-            }
-
-            if (strays.isNotEmpty()) {
-                Caption(
-                    text = "${strays.size} off the screen — the pad will not match this.",
-                    colour = Color(0xFFE0603A),
-                )
-            }
-            if (message.isNotBlank()) Caption(text = message)
         }
 
         if (panelMenu) {
@@ -388,16 +401,15 @@ public fun LayoutEditorScreen(
                 title = { Text("These buttons") },
                 text = {
                     Text(
-                        "Drag them anywhere. Hidden, they fade and stop taking touches, so the pad " +
-                            "underneath can be worked on through them — touching any control " +
-                            "brings them back."
+                        "Drag them anywhere. Minimised, they become one button that also drags — " +
+                            "tap it to bring them back to the middle."
                     )
                 },
                 confirmButton = {
                     KButton(onClick = {
                         panelHidden = true
                         panelMenu = false
-                    }) { Text("Hide") }
+                    }) { Text("Minimise") }
                 },
                 dismissButton = {
                     TextButton(onClick = {
@@ -507,6 +519,7 @@ public fun LayoutEditorScreen(
     if (typingNumbers && selected != null) {
         NumbersDialog(
             element = selected,
+            device = device,
             portrait = portrait,
             onDismiss = { typingNumbers = false },
             onApply = { updated ->
@@ -551,8 +564,6 @@ public fun LayoutEditorScreen(
 private val GRID_SIZES = listOf(0.02, 0.04, 0.06, 0.10)
 private const val DEFAULT_GRID = 0.04
 
-/** Faded far enough to see the pad through, and not so far that it cannot be found again. */
-private const val HIDDEN_PANEL_ALPHA = 0.22f
 
 /** A step small enough to place a control with and large enough to feel like a press. */
 private const val STEP = 0.02
@@ -568,8 +579,8 @@ private const val STEP = 0.02
  * by hand or arriving from somewhere else is still read, because refusing to open a file over a
  * matter of taste is worse than showing what it says.
  */
-private const val EDITOR_MIN_SIZE = 0.06
-private const val EDITOR_MAX_SIZE = 0.60
+private const val EDITOR_MIN_SIZE = 0.05
+private const val EDITOR_MAX_SIZE = 0.50
 
 // --- the furniture that floats on the canvas -----------------------------------------------------
 
@@ -1116,7 +1127,7 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
     IdleSeconds("controls fade", idle.controlsFadeSeconds, idle.controlsEnabled, onPersist) { v ->
         AppSettings.update { it.copy(idle = it.idle.copy(controlsFadeSeconds = v)) }
     }
-    IdleSeconds("controls hide", idle.controlsHideSeconds, idle.controlsEnabled, onPersist) { v ->
+    IdleSeconds("then hide after", idle.controlsHideSeconds, idle.controlsEnabled, onPersist) { v ->
         AppSettings.update { it.copy(idle = it.idle.copy(controlsHideSeconds = v)) }
     }
 
@@ -1128,8 +1139,10 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
     }
 
     Text(
-        text = "Two intervals for the controls: one to fade, one to go. The K button has its own " +
-            "and only ever fades — it is the way out, and a way out that hides itself is not one.",
+        text = "The controls fade after the first interval and go that long again after fading — " +
+            "so fading is always a warning that hiding is coming. The K button has its own " +
+            "interval and only ever fades: it is the way out, and a way out that hides itself is " +
+            "not one.",
         style = MaterialTheme.typography.bodySmall,
     )
 
@@ -1384,6 +1397,7 @@ private fun GridTools(
 @Composable
 private fun NumbersDialog(
     element: LayoutElement,
+    device: LayoutSurface,
     portrait: Boolean,
     onDismiss: () -> Unit,
     onApply: (LayoutElement) -> Unit,
@@ -1447,13 +1461,40 @@ private fun NumbersDialog(
                     problem = "Every field has to be a number."
                     return@KButton
                 }
-                val candidate = Placement.of(
+                // The same limits dragging obeys. A dialog that accepted what a drag refuses is two
+                // rules for one thing, and the one nobody sees wins — which is how a control 0.9 of
+                // the screen wide and half of it off the edge could be typed in.
+                if (numbers.take(2).any { it!! < -Placement.MAX_OFFSET || it > Placement.MAX_OFFSET }) {
+                    problem = "An offset has to be between -${Placement.MAX_OFFSET} and " +
+                        "${Placement.MAX_OFFSET}."
+                    return@KButton
+                }
+                if (numbers.drop(2).any { it!! < EDITOR_MIN_SIZE || it > EDITOR_MAX_SIZE }) {
+                    problem = "A size has to be between $EDITOR_MIN_SIZE and $EDITOR_MAX_SIZE " +
+                        "of the screen's shorter side."
+                    return@KButton
+                }
+                val wanted = Placement(
                     anchor = current.anchor,
                     offsetX = round(numbers[0]!!),
                     offsetY = round(numbers[1]!!),
                     width = round(numbers[2]!!),
                     height = round(numbers[3]!!),
                     rotationDegrees = current.rotationDegrees,
+                )
+                if (!wanted.resolve(device).shapedAs(element.effectiveShapeFor(portrait))
+                        .isWithin(device)
+                ) {
+                    problem = "That puts the control off the screen."
+                    return@KButton
+                }
+                val candidate = Placement.of(
+                    anchor = wanted.anchor,
+                    offsetX = wanted.offsetX,
+                    offsetY = wanted.offsetY,
+                    width = wanted.width,
+                    height = wanted.height,
+                    rotationDegrees = wanted.rotationDegrees,
                 )
                 when (candidate) {
                     is Outcome.Failure -> problem = candidate.error.message
@@ -1849,7 +1890,7 @@ private fun EditorCanvas(
         // corner is a dot on the part of the glass most phones round off — this says the same thing
         // with a shape big enough that no corner radius can hide it.
         layout.element(selectedId ?: "")?.let { chosen ->
-            drawAnchorRegion(fitted, chosen.placementFor(livePortrait).anchor)
+            drawAnchorRegion(fitted, chosen.placementFor(livePortrait).anchor, gridUnit)
         }
 
         val placed = layout.elements.map { it.id to rectOf(fitted, it) }
@@ -2093,8 +2134,15 @@ private fun DrawScope.drawThirds(fit: Fit, gridUnit: Double) {
  * says where a control is measured from, and a hint that obscures the thing it is about is worse
  * than no hint.
  */
-private fun DrawScope.drawAnchorRegion(fit: Fit, anchor: Anchor) {
+private fun DrawScope.drawAnchorRegion(fit: Fit, anchor: Anchor, gridUnit: Double) {
     val third = 1f / 3f
+    val step = (gridUnit * fit.surface.shortSide).toFloat()
+
+    // Snapped to the same grid lines the dividers are, so the lit region ends exactly where the
+    // line that marks it is drawn. Two things describing the same ninth of the screen and
+    // disagreeing by a few pixels is worse than either alone.
+    fun snapX(v: Float) = if (step <= 1f) v else Math.round(v / step) * step
+    fun snapY(v: Float) = if (step <= 1f) v else Math.round(v / step) * step
     val column = when (anchor.originX) {
         0.0 -> 0
         1.0 -> 2
@@ -2105,10 +2153,14 @@ private fun DrawScope.drawAnchorRegion(fit: Fit, anchor: Anchor) {
         1.0 -> 2
         else -> 1
     }
+    val x0 = snapX(fit.width * third * column)
+    val x1 = if (column == 2) fit.width else snapX(fit.width * third * (column + 1))
+    val y0 = snapY(fit.height * third * row)
+    val y1 = if (row == 2) fit.height else snapY(fit.height * third * (row + 1))
     drawRect(
-        color = Color(0xFF60BAFF).copy(alpha = 0.10f),
-        topLeft = Offset(fit.left + fit.width * third * column, fit.top + fit.height * third * row),
-        size = Size(fit.width * third, fit.height * third),
+        color = Color(0xFF60BAFF).copy(alpha = 0.16f),
+        topLeft = Offset(fit.left + x0, fit.top + y0),
+        size = Size(x1 - x0, y1 - y0),
     )
 }
 
