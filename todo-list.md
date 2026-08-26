@@ -52,14 +52,14 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.42-dev`
+## State of the queue — build `0.0.43-dev`
 
 | Phase | Items |
 | --- | --- |
 | `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
 | `testing` | — |
-| `building` | `BUG-8`, `BUG-52`, `FEAT-60`, `FEAT-61` |
+| `building` | `BUG-53`, `FEAT-62`–`FEAT-66` |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -940,6 +940,102 @@ Three rules, one shape:
 
 ---
 
+### `BUG-53` — The walk was never precision. It was rounding a value that re-derives itself
+
+**Phase:** `building` — `0.0.43-dev`.
+**Measured by the project owner**, build `0.0.42-dev`: *"still off by `0.0001`, `0.2600` becomes
+`0.2601`, doing it 5 times increases to `0.2605` at 120%."*
+
+**Three rounds spent adding decimals to a problem that decimals cannot solve, and this entry is the
+correction.** Two decimals jumped. Three walked by a thousandth. Four walks by a ten-thousandth. Each
+time the step got smaller and the *shape* did not, because the shape was never about precision:
+
+> Changing an anchor is the one editor operation that is **purely a re-derivation**. Nothing new
+> comes in — the control's position is measured, expressed against a different origin, and stored
+> again. Rounding at that step feeds the rounding error back into the next measurement, so the value
+> walks by half a step per change no matter how small the step is.
+
+Dragging looks similar and is not: the finger is the authority on every frame, so a rounding error
+cannot compound. That is why dragging never drifted and the anchor button always did.
+
+**The fix is to stop rounding there at all.** An anchor change keeps full precision in memory, and
+rounding happens where it belongs — at the boundary, when the file is written. A full cycle of eight
+anchors now returns to the same number to about fifteen decimal places, because nothing was thrown
+away in between.
+
+**The project owner's instruction is the other half**, and it is the right call:
+
+> *"using 4 decimal to round it but only showing and writing upto 3, so even if 4 decimal is off by
+> `0.0001` then we will write and use as `0.000`"*
+
+Placements are written and shown to **three** decimals — 1.1 px, tidy in a hand-edited file — while
+memory keeps whatever the arithmetic produced. And the unsaved marker compares placements **at file
+precision**, because the question it asks is *"would the written file differ"*, not *"do two doubles
+differ in the fifteenth place"*.
+
+**Do not** round the result of an operation whose only input is its own previous output. Round when
+the value leaves the program.
+
+---
+
+### `FEAT-62` — Settings numbers keep their places too
+
+**Phase:** `building` — `0.0.43-dev`.
+**Observed:** build `0.0.42-dev`, point 5. *"only layout.json has update, my new settings still uses
+upto 0.00 only."*
+
+`settings.json` is padded to **two** decimals — `1.20`, not `1.2` — for the same reason layouts are
+padded: a column that changes width cannot be scanned.
+
+**Two rather than three, and the difference is not an oversight.** A layout holds *positions*, which
+re-derive and need room for the arithmetic. Settings hold *slider values*, which have exactly two
+decimals because that is what a slider offers. Writing `1.200` would claim a precision the control
+cannot produce.
+
+---
+
+### `FEAT-63` — Apply returns to the canvas; Cancel goes back to the menu
+
+**Phase:** `building` — `0.0.43-dev`.
+**Asked for:** build `0.0.42-dev`, point 11. *"apply should send user again to layout editor not the
+menu return."*
+
+`FEAT-61` put the parent menu back whichever way the child closed. That is right for Cancel — nothing
+happened, so nothing should have moved — and wrong for Apply, where the whole point is to see the
+change on the canvas with nothing on top of it.
+
+---
+
+### `FEAT-64` — A window says what the value is now, not only what it will be
+
+**Phase:** `building` — `0.0.43-dev`.
+**Asked for:** build `0.0.42-dev`, point 12. *"I want button current size and position in menu and
+size dialog also to compare what change value from which value."*
+
+The long-press menu says which control it is and offers steppers, and never said where the control
+actually is — so the numbers being nudged were invisible. The size dialog pre-fills the current
+values and then they *become* the edited ones, so after two keystrokes there is nothing left to
+compare against.
+
+Both now carry the position and size **as they stand**, unchanged by what is being typed.
+
+---
+
+### `FEAT-65` — A window opens where it was left
+
+**Phase:** `building` — `0.0.43-dev`.
+**Asked for:** build `0.0.42-dev`, point 13. *"menu dialog should remember their last position per
+session."*
+
+Dragging a window out of the way was undone by closing it. Each window keeps its own position for the
+session — the long-press menu and the size window separately, since they are moved out of the way of
+different things.
+
+Not written to settings, for the same reason snapping is not: it is working state, and every field in
+that file is one more thing to version and migrate.
+
+---
+
 ## 2. Errors and bugs
 
 ### `BUG-1` — The overlay does not draw into the cutout area
@@ -1068,9 +1164,34 @@ control affected.
 
 ---
 
+### `FEAT-66` — The trigger ramp is three settings, and the pull is longer
+
+**Phase:** `building` — `0.0.43-dev`.
+**Asked for:** build `0.0.42-dev`, point 16. *"working, just make later part bit more longer. yeah
+add setting option that would be for the best, with how quick 1st step and 2nd step and release. good
+idea."*
+
+Three sliders: how fast the first half arrives, how fast the second half travels, and how fast the
+release is. Defaults 0.10s / 0.35s / 0.30s — the second half a third longer than `BUG-8` shipped it,
+which is what the project owner asked for.
+
+**Where it lives, and this changes what `BUG-8` planned.** `BUG-8` said a field in the *layout*
+document, which meant a schema version bump and a migration. That was the wrong home. A ramp is a
+**feel preference** — the same kind of thing as dead zone, curve and sensitivity, all of which live in
+`settings.json` and none of which are properties of an arrangement. Two people sharing a layout
+should not be sharing each other's trigger feel.
+
+So it goes in `settings.json` beside the stick profile: **no layout schema bump, no migration, no
+`docs/CONFIGURATION_SCHEMA.md` change to the layout document.** A cheaper answer and a more correct
+one, and worth saying out loud because the earlier plan is written down and somebody would otherwise
+follow it.
+
+---
+
 ### `BUG-8` — A trigger takes too long to register
 
-**Phase:** `building` — `0.0.42-dev`, the ramp only. **The configurable field is deliberately not in
+**Phase:** `done` — confirmed on the reference device against build `0.0.42-dev`: *"yes working."*
+Made configurable and lengthened by `FEAT-66`. Originally built in `0.0.42-dev`, the ramp only. **The configurable field is deliberately not in
 this build**, and the reason is that it needs a schema version bump, a migration, a
 `docs/CONFIGURATION_SCHEMA.md` update and a settings control — a round of its own, and none of it is
 worth doing before the shape has been felt by a hand. The number the project owner is hitting is
@@ -2722,54 +2843,155 @@ out of the way with a window up → `FEAT-61`.
 
 ---
 
+### Round `0.0.42-dev` — the walk, finally diagnosed
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–3 | Four decimals | Still walking, 0.0001 a cycle above 105% → `BUG-53`, and it was never precision |
+| 4 | 115% and below | **No shift** |
+| 5 | The file | Four decimals reach it now. Settings still two → `FEAT-62` |
+| 6–7 | schemaVersion, reload | **Working** |
+| 8–10 | The draggable size window | **Working** |
+| 11 | Apply | Should return to the canvas, not the menu → `FEAT-63` |
+| 12 | The buttons hiding | **Working**; and the windows should say what the value is now → `FEAT-64` |
+| 13 | The buttons returning | **Working**; windows should remember where they were put → `FEAT-65` |
+| 14–17 | The trigger | **Working**; second half a little longer, and make all three adjustable → `FEAT-66` |
+| 18 | Regression | None seen |
+
+### Decisions this round
+
+- **Adding decimals was the wrong answer three times running.** The anchor button is the one editor
+  operation whose only input is its own previous output, and rounding there feeds the error back in.
+  Two decimals jumped, three walked by a thousandth, four by a ten-thousandth — the step shrank and
+  the shape never changed. It does not round at all now, and rounding happens where the value leaves
+  the program.
+- **The trigger ramp goes in `settings.json`, not the layout document.** `BUG-8` planned the layout,
+  which meant a schema version bump and a migration. A ramp is a feel preference like dead zone and
+  curve, and two people sharing a layout should not share each other's trigger feel. Cheaper *and*
+  more correct, and worth saying because the old plan is written down.
+- **`ConfigNode.Num` equality ignores the width it is written at.** A writer hint is presentation,
+  not content — caught by an existing round-trip test, which is that test earning its keep.
+- **The queue is re-sorted around what a round costs**, not around what is most wanted. See
+  **Order of work**.
+
+---
+
 ### Awaiting
 
 - Anything further the project owner sends; it is added here and sorted into §1–§3 by kind.
-- Confirmation of the order below, and of the one open decision in `CRIT-5` (which aspect ratio the
-  canvas uses).
+- Confirmation of the re-sorted order below.
 
 ---
 
 ## Order of work
 
-The project owner named `CRIT-5` first. Everything else below is a recommendation, with the
-reasoning visible, and can be reordered.
+**Re-sorted at the project owner's request, build `0.0.43-dev`**, with one question in front of every
+other: *what makes the next round arrive sooner?*
 
-**1 — The editor becomes truthful, then gains tools.** One block, because all of it is the same
-canvas and splitting it means drawing that canvas three times.
+The bottleneck is not writing code. It is that **every claim about behaviour costs one install-and-
+test cycle on the reference device**, and a round that produces one confirmable thing costs the same
+as a round that produces eight. So the sort is by two things the old one ignored:
 
-| # | Item | Why here |
-| --- | --- | --- |
-| 1 | `CRIT-5` device-ratio canvas | Named first by the project owner. Everything else in this block is drawn on it. **`testing` in `0.0.26-dev`.** |
-| 2 | `BUG-9` square draws as a rectangle | Same drawing path. Fixed while it is open, not after. **`testing` in `0.0.26-dev`.** |
-| 3 | `FEAT-11` grid and snapping | Cheapest of the three tools, and the one that makes dragging accurate. **`testing` in `0.0.26-dev`.** |
-| 4 | `FEAT-12` type the numbers | Small once the canvas exists, and it answers the offset confusion directly. **`testing` in `0.0.26-dev`.** |
-| 5 | `FEAT-10` window editor | Largest of the three, and the one with the most to explain on screen. Last in the block for that reason. **`testing` in `0.0.26-dev`.** |
+- **Does it shorten every later round?** Anything that lets a change be checked without a full
+  session is worth more than its own size.
+- **Does delaying it make it more expensive?** Restructuring costs the amount of code that exists
+  when you do it. Every feature added before it is a feature that gets moved.
 
-**2 — The triggers.** Both small, both reported, neither touching the editor.
+Items are grouped into **builds**, not listed one by one, because a build is the unit that costs
+something. Everything in one row is tested in one sitting.
 
-| # | Item | Why here |
-| --- | --- | --- |
-| 6 | `BUG-7` remove the clockwise sweep | Drawing only. No schema, no measurement needed. |
-| 7 | `BUG-8` trigger response | Needs a device measurement and a schema field, so it follows rather than leads. |
+---
 
-**3 — The overlay and the screen it is given.**
+### Build 1 — stop paying for round trips
 
-| # | Item | Why here |
-| --- | --- | --- |
-| 8 | `BUG-1` + `BUG-2` cutout | One fault in two places. Makes a setting that already ships honest. |
-| 9 | `BUG-3` `HOW-TO-EDIT.md`, `BUG-4` drop sensor-portrait | Both small, both reported. |
+| Item | Why here |
+| --- | --- |
+| `FEAT-3` test ground | **The whole reason this build is first.** One screen where every control can be pressed, held and read, with no target application and no session. Every round after this one is checked in a minute instead of a launch-and-play. The project owner already named it their next priority; the sort agrees for its own reasons. |
+| `BUG-4` drop `sensor-portrait` | An option that does nothing. Settings-only, no risk, rides along free. |
+| `BUG-3` `HOW-TO-EDIT.md` never written | Small, reported, and it makes the file the editor produces self-explaining — which is worth more once a test ground exists to try things in. |
 
-**4 — New ground.**
+**Why not later:** every round spent without it pays the launch-and-play tax again.
 
-| # | Item | Why here |
-| --- | --- | --- |
-| 10 | `FEAT-3` test ground | The project owner's stated next priority, and it makes every later change checkable in one place. |
-| 11 | `FEAT-1` face buttons as one plate | Asked for, self-contained, and it exercises the new window editor. |
-| 12 | `CRIT-2` + `CRIT-3` home screen and modules | Together, because doing either first means moving the same code twice. |
-| 13 | `FEAT-5` discovery and launch | The gap between here and the MVP flow, and the bulk of `CRIT-4`. |
-| 14 | `CRIT-1` release signing key | Last in build order, first in importance, and it needs the project owner rather than the agent. |
+---
 
-**After `v0.1.0` unless pulled forward:** `FEAT-2` eight-way face pad, `FEAT-4` skins, `FEAT-6`
-profiles, `FEAT-7` haptics, `FEAT-8` backend interface, `FEAT-9` community, `BUG-5` the unexplained
-`"shape": "round"`, `BUG-6` Kestrel creating its own folder.
+### Build 2 — restructure before it costs more
+
+| Item | Why here |
+| --- | --- |
+| `CRIT-3` modules as `PROJECT_STRUCTURE.md` describes | The cost is the amount of code that exists when it happens, and code is being added every round. Doing it after Build 3 means moving Build 3 as well. |
+| `CRIT-2` home screen and navigation | Everything later hangs off it — discovery, profiles, skins, community. Adding those to a screen that is about to be replaced is building twice. Doing it with `CRIT-3` means moving the same files once instead of twice. |
+
+**Why not first:** Build 1 makes Build 2 checkable. Restructuring with no test ground means verifying
+a large refactor by playing a game.
+
+**Warning:** this build changes nothing a user can see, which makes it the easiest one to skip and
+the most expensive one to postpone. Its test procedure is "everything still works", and that is the
+point.
+
+---
+
+### Build 3 — the editor batch
+
+| Item | Why together |
+| --- | --- |
+| `FEAT-45` type a size in pixels | All four touch the same menu and the same dialog. |
+| `FEAT-46` sizes bounded in millimetres | Pairs with `FEAT-45` — one is how you type a size, the other is which sizes are allowed. |
+| `FEAT-39` turning a control off | Same menu, and it needs a schema field, so it belongs with anything else that needs one. |
+| `FEAT-38` opacity, per pad and per control | Same menu, same schema round. |
+
+**Why one build:** these are four small things in one place. Shipped separately they cost four test
+sessions; shipped together they cost one, and the schema changes `FEAT-38` and `FEAT-39` need can
+share a single version bump, a single migration and a single `docs/CONFIGURATION_SCHEMA.md` edit.
+
+---
+
+### Build 4 — the gap between here and a product
+
+| Item | Why here |
+| --- | --- |
+| `FEAT-5` target discovery and launching | The largest missing piece of the MVP flow, and the bulk of what `CRIT-4` has to decide about. |
+| `FEAT-1` face buttons as one plate | Asked for, self-contained, and it exercises the window model properly. |
+| `FEAT-40` platform profiles, `FEAT-41` import and export | Both are about *choosing and moving* layouts, which is only worth having once there is somewhere to use them. |
+
+---
+
+### Running alongside, not in the queue
+
+These do not wait for a build and are not blocked by one.
+
+| Item | Who |
+| --- | --- |
+| `CRIT-1` release signing key | **The project owner, not the agent.** It needs a keystore held in repository secrets. It blocks `v0.1.0` and nothing else, so it can be done at any point before the tag — but it cannot be done *by* me, and leaving it to the end makes the release wait on it. |
+| `CRIT-4` decide what `v0.1.0` contains | A product decision. It becomes answerable once Build 4 is scoped, and it is what says whether Build 4 ships whole. |
+| `BUG-5` the unexplained `"shape": "round"` | **Needs the file, or the sighting withdrawn.** Not reproducible; no work possible without evidence. |
+| `BUG-6` Kestrel cannot create its own folder | **Closed as an accepted limitation**, kept so it is not raised again. Fixing it needs `MANAGE_EXTERNAL_STORAGE`, which is what got Kestrel blocked by Play Protect once already. |
+
+---
+
+### After `v0.1.0`
+
+`FEAT-2` eight-way face pad · `FEAT-4` skins · `FEAT-6` profiles per target · `FEAT-7` haptics ·
+`FEAT-8` the backend behind an interface · `FEAT-9` community system · `FEAT-33` fonts ·
+`FEAT-42` keyboard and mouse (**a feasibility experiment first** — nothing about it is proven).
+
+**`FEAT-30`** — the toggle as a layout element — is **blocked, not deferred**: it needs a gamepad
+icon, and `material-icons-core` does not have one. It moves the moment an asset and its licence are
+settled.
+
+---
+
+### What changed from the previous sort, and why
+
+The old order ran `CRIT-5` → editor tools → triggers → cutout → new ground, and it was right when it
+was written: the editor was unusable and everything else was downstream of that. It is finished now,
+and three things in it have since been overtaken.
+
+- **`FEAT-3` moved from tenth to first.** It was filed under "new ground". It is not new ground — it
+  is the tooling that makes every other item cheaper to confirm, and eighteen rounds have now been
+  spent paying the tax it removes.
+- **`CRIT-2` and `CRIT-3` moved up, together.** They were twelfth. Their cost grows with every round
+  that adds code, and the last eighteen rounds added a great deal.
+- **The small editor items were gathered into one build.** `FEAT-38`, `FEAT-39`, `FEAT-45` and
+  `FEAT-46` were scattered across the list; they touch one menu and can share one schema bump.
+- **`BUG-7` and `BUG-8` are gone from the queue** — both closed, in `0.0.39-dev` and `0.0.42-dev`.
+- **`BUG-1` and `BUG-2` are gone** — both closed and confirmed.

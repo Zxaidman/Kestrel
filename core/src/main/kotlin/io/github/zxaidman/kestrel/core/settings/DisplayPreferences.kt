@@ -175,3 +175,45 @@ public data class IdlePreferences(
         public const val MAX_SECONDS: Int = 120
     }
 }
+
+/**
+ * How a trigger travels, in seconds.
+ *
+ * **A feel preference, in the settings file, not a property of a layout.** `BUG-8` planned to put
+ * this in the layout document, which would have meant a schema version bump and a migration. That
+ * was the wrong home: a ramp is the same kind of thing as dead zone, curve and sensitivity, all of
+ * which live here — and two people sharing an arrangement should not be sharing each other's trigger
+ * feel.
+ *
+ * The press is two rates, which is the project owner's own proposal. A single 0.5s ramp was chosen
+ * for a measured reason — a trigger that jumps straight to full feels broken to the hand — and it
+ * made the press slow to *register*, which is a different complaint. So the first half arrives
+ * quickly and the second half travels, and both are adjustable because which of the two matters
+ * depends on the target.
+ *
+ * **Do not** turn any of these back into a step per frame. A fixed step gave 0.31s on a 120Hz panel
+ * and 0.5s on a 60Hz one; a ramp is measured in time.
+ */
+public data class TriggerPreferences(
+    /** Seconds for the first half of the pull. Short, so the press registers almost at once. */
+    public val quickSeconds: Double = 0.10,
+
+    /** Seconds for the second half. Longer, so a full pull still feels like a trigger. */
+    public val travelSeconds: Double = 0.35,
+
+    /**
+     * Seconds to fall back to nothing.
+     *
+     * Quicker than the pull on purpose: a control that lingers after the thumb has gone feels
+     * broken, while one that takes a moment to reach full feels like a trigger.
+     */
+    public val releaseSeconds: Double = 0.30,
+) {
+    public companion object {
+        /** Below this a ramp is a step, and a step is what this exists to avoid. */
+        public const val MIN_SECONDS: Double = 0.02
+
+        /** Above this a trigger is a slider. */
+        public const val MAX_SECONDS: Double = 2.0
+    }
+}

@@ -664,6 +664,66 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
+## Built, awaiting confirmation — `0.0.43-dev`
+
+### `BUG-53` — The walk was rounding, not precision
+
+Three rounds were spent adding decimals to a problem decimals cannot solve. Two jumped by 10.8 px,
+three walked by a thousandth, four by a ten-thousandth — the step shrank every time and the shape
+never changed.
+
+Changing an anchor is the one editor operation that is **purely a re-derivation**: the position is
+measured, expressed against a different origin and stored again. Rounding at that step feeds the
+rounding error into the next measurement, so the value walks by half a step per change however small
+the step is. Dragging looks identical and is not — the finger is the authority every frame, so its
+rounding cannot compound. That is why dragging never drifted and the anchor button always did.
+
+It no longer rounds at all. Full precision in memory; rounding when the value leaves the program.
+**A hundred cycles of eight anchors, at five sizes, now land within a hundredth of a pixel** — where
+any rounding step would have walked a hundred times as far as one cycle did.
+
+Placements are written and shown at **three** decimals, on the project owner's instruction: round in
+full and write short. The unsaved marker compares placements at file precision, because the question
+it asks is "would the written file differ".
+
+Unit tested. Unverified on a device.
+
+---
+
+### `FEAT-66` — The trigger ramp is three settings, and lives in the right file
+
+Three sliders: how fast the first half arrives, how fast the second half travels, how fast it
+releases. Defaults 0.10s / 0.35s / 0.30s — the second half a third longer than `BUG-8` shipped it.
+Read every frame of a ramp rather than captured when the window was built, so a slider is felt while
+it is being moved.
+
+**In `settings.json`, not the layout document.** `BUG-8` planned the layout, which would have cost a
+schema version bump and a migration. A ramp is a feel preference like dead zone, curve and
+sensitivity — all of which live here — and two people sharing an arrangement should not be sharing
+each other's trigger feel. Unit tested including an older file with no `trigger` at all.
+
+---
+
+### `FEAT-62`, `FEAT-63`, `FEAT-64`, `FEAT-65` — the round's smaller asks
+
+`settings.json` is padded to two decimals — `1.20`, not `1.2`. Two rather than the layout's three
+because these are slider values, and writing `1.200` would claim a precision the control cannot
+produce.
+
+Apply returns to the canvas; Cancel goes back to the menu. Nothing happened on a cancel so nothing
+should have moved, and the whole point of Apply is to see the change with nothing on top of it.
+
+Both windows carry the position and size **as they stand**, unchanged by what is being typed. The
+menu offered steppers and never said what they were nudging; the size window's fields start as the
+current values and then become the edited ones.
+
+Each window keeps its own position for the session. Dragging something out of the way and having that
+undone by closing it is the work being asked for twice.
+
+All unverified.
+
+---
+
 ## Built, awaiting confirmation — `0.0.42-dev`
 
 ### `BUG-52` — Four decimals, and the writer was the reason three never arrived

@@ -321,40 +321,40 @@ class ControlShapeTest {
      * precision an anchor change needs to be stable.
      */
     @Test
-    fun `a placement is written to four decimals, trailing zeros and all`() {
+    fun `a placement is written to three decimals, trailing zeros and all`() {
         val layout = (ControllerLayoutReader.read(documentWith(null)) as Outcome.Success).value
         val moved = layout.copy(
             elements = layout.elements.map {
                 it.copy(
                     placement = it.placement.copy(
-                        offsetX = 0.1, offsetY = 0.26, width = 0.2637, height = 0.123456,
+                        offsetX = 0.1, offsetY = 0.26, width = 0.263, height = 0.123456,
                     )
                 )
             }
         )
         val text = Json.write(ControllerLayoutWriter.write(moved))
 
-        assertTrue("\"offsetX\": 0.1000" in text, "0.1 should keep its places:\n$text")
-        assertTrue("\"offsetY\": 0.2600" in text, "0.26 should keep its places:\n$text")
-        assertTrue("\"width\": 0.2637" in text, "four decimals should survive:\n$text")
-        assertTrue("\"height\": 0.1235" in text, "anything longer should round to four:\n$text")
-        // And nothing else changed shape: a version is a version, not 1.0000.
+        assertTrue("\"offsetX\": 0.100" in text, "0.1 should keep its places:\n$text")
+        assertTrue("\"offsetY\": 0.260" in text, "0.26 should keep its places:\n$text")
+        assertTrue("\"width\": 0.263" in text, "three decimals should survive:\n$text")
+        assertTrue("\"height\": 0.123" in text, "anything longer should round to three:\n$text")
+        // And nothing else changed shape: a version is a version, not 1.000.
         assertTrue("\"schemaVersion\": 1," in text, "schemaVersion should stay whole:\n$text")
     }
 
     @Test
-    fun `a placement written at four decimals reads back as what it was`() {
+    fun `a placement written at three decimals reads back as what it was`() {
         val layout = (ControllerLayoutReader.read(documentWith(null)) as Outcome.Success).value
         val moved = layout.copy(
             elements = layout.elements.map {
-                it.copy(placement = it.placement.copy(offsetX = 0.2637, offsetY = 0.1))
+                it.copy(placement = it.placement.copy(offsetX = 0.263, offsetY = 0.1))
             }
         )
         val again = ControllerLayoutReader.read(
             (Json.parse(Json.write(ControllerLayoutWriter.write(moved))) as Outcome.Success).value
         )
         val back = (again as Outcome.Success).value.elements.single().placement
-        assertEquals(0.2637, back.offsetX)
+        assertEquals(0.263, back.offsetX)
         assertEquals(0.1, back.offsetY)
     }
 

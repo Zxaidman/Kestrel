@@ -525,24 +525,26 @@ public object ControllerLayoutWriter {
      *
      * **Four, and both halves of that matter.**
      *
-     * Rounded to four because an offset re-enters its own next computation: changing an anchor
-     * expresses one point from a different origin, so the stored value is measured, re-derived and
-     * stored again. At two decimals — 10.8 px on the reference device — the control jumped
-     * (`BUG-48`, `BUG-51`); at three it stopped jumping and started *walking*, one thousandth per
-     * cycle (`BUG-52`). Four is 0.11 px, where a full cycle cannot reach one storable step.
+     * **Three, and this is where rounding belongs — the only place.** Changing a control's anchor
+     * re-derives its offsets from its own previous offsets, so rounding at that step fed the error
+     * back in and the value walked: half a step per change, at two decimals (10.8 px), at three
+     * (1.1 px) and at four (0.11 px) alike. Adding decimals shrank the step and never changed the
+     * shape. The editor stopped rounding there instead (`BUG-53`), and keeps full precision until
+     * the value leaves the program — which is here.
      *
-     * This writer was rounding to two, which is why three decimals never reached a file at all —
-     * the editor held them and the writer threw them away on the way out.
+     * With the walk gone, three decimals is what the file wants: 1.1 px, and short enough to
+     * hand-edit. This writer was rounding to *two* until `0.0.42-dev`, which is why an editor
+     * holding more never showed it in a file.
      *
-     * Padded to four because the project owner hand-edits these files, and a column where one line
+     * Padded to three because the project owner hand-edits these files, and a column where one line
      * reads `0.1` and the next `0.2637` cannot be scanned by eye (`FEAT-60`). `0.1` is written
-     * `0.1000`.
+     * `0.100`.
      *
      * Rotation is left out of both: it is an angle in degrees, on a different scale from the four
      * fractions, and `0.0000` degrees is noise rather than alignment.
      */
-    private const val PLACEMENT_DECIMALS = 4
-    private const val PLACEMENT_PLACES = 10_000.0
+    private const val PLACEMENT_DECIMALS = 3
+    private const val PLACEMENT_PLACES = 1_000.0
 
     private fun round(value: Double): Double = Math.round(value * 100.0) / 100.0
 

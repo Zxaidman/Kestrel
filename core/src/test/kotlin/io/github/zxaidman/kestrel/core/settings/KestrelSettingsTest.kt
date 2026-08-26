@@ -24,6 +24,59 @@ class KestrelSettingsTest {
 
     private fun parse(text: String) = SettingsDocument.read(value(Json.parse(text)))
 
+    // --- how a trigger travels ------------------------------------------------------------------
+
+    /**
+     * `FEAT-66`. The ramp is a feel preference and lives beside the stick shaping, not in a layout
+     * document — `BUG-8` planned the other home, which would have cost a schema version bump and a
+     * migration for something that is not a property of an arrangement.
+     */
+    @Test
+    fun `the trigger ramp survives being written and read again`() {
+        val settings = KestrelSettings(
+            trigger = TriggerPreferences(
+                quickSeconds = 0.08, travelSeconds = 0.42, releaseSeconds = 0.25,
+            )
+        )
+        val text = Json.write(SettingsDocument.write(settings))
+        val back = value(parse(text))
+        assertEquals(0.08, back.trigger.quickSeconds)
+        assertEquals(0.42, back.trigger.travelSeconds)
+        assertEquals(0.25, back.trigger.releaseSeconds)
+        assertTrue("\"quickSeconds\": 0.08" in text, "padded to two places:\n$text")
+    }
+
+    /** An older file has no `trigger` at all, and that is an absence rather than a fault. */
+    @Test
+    fun `settings written before the trigger existed still load`() {
+        val text = """
+            {
+              "schemaVersion": 1,
+              "type": "settings",
+              "id": "user.settings",
+              "name": "Kestrel settings",
+              "controlScale": 1.0
+            }
+        """.trimIndent()
+        val back = value(parse(text))
+        assertEquals(TriggerPreferences(), back.trigger)
+    }
+
+    /** A ramp of nothing is a step, which is what the two-rate shape exists to avoid. */
+    @Test
+    fun `a trigger duration outside the range is refused`() {
+        val text = """
+            {
+              "schemaVersion": 1,
+              "type": "settings",
+              "id": "user.settings",
+              "name": "Kestrel settings",
+              "trigger": { "quickSeconds": 0.0 }
+            }
+        """.trimIndent()
+        assertTrue(error(parse(text)) is ConfigurationError.OutOfRange)
+    }
+
     // --- the file the project owner had, and why it would not load -----------------------------
 
     /**

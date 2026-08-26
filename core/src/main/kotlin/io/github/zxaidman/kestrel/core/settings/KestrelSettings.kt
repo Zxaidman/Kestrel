@@ -47,6 +47,9 @@ public data class KestrelSettings(
     /** When an untouched pad gets out of the way. */
     public val idle: IdlePreferences = IdlePreferences(),
 
+    /** How a trigger travels. A feel preference, like the stick shaping below it. */
+    public val trigger: TriggerPreferences = TriggerPreferences(),
+
     /** The shaping applied to both sticks. */
     public val stickProfile: AnalogProfile = AnalogProfile.DEFAULT_STICK,
 
@@ -118,7 +121,7 @@ public object SettingsDocument {
     private val KNOWN_FIELDS = setOf(
         "schemaVersion", "type", "id", "name",
         "controlScale", "controlScalePortrait", "scaleScheme", "editor", "idle", "layoutId", "stick",
-        "display",
+        "display", "trigger",
     )
     private val KNOWN_STICK_FIELDS = setOf(
         "deadzone", "outerLimit", "curve", "sensitivity", "invertX", "invertY", "deadzoneShape",
@@ -239,6 +242,10 @@ public object SettingsDocument {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value
                 },
+                trigger = when (val v = readTrigger(obj, defaults.trigger)) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                },
                 stickProfile = stick,
                 layoutId = layoutId,
                 display = display,
@@ -247,8 +254,24 @@ public object SettingsDocument {
         )
     }
 
-    /** The precision the size slider works in, so the file never carries more than it means. */
-    private fun twoDecimals(value: Double): Double = Math.round(value * 100.0) / 100.0
+    /**
+     * Every fractional setting, written to two decimals and padded to two: `1.20`, not `1.2`.
+     *
+     * **Two, where a layout gets three, and the difference is not an oversight.** A layout holds
+     * positions, which re-derive themselves and need room for the arithmetic. These are slider
+     * values, and a slider offers exactly two decimals — writing `1.200` would claim a precision
+     * the control cannot produce.
+     *
+     * Rounding as well as padding is what stops float error reaching the file. `Float` cannot hold
+     * 1.2, and a slider maximum widened straight to a `Double` arrives as 1.2000000476837158 — a
+     * hair over a ceiling of exactly 1.2, which made Kestrel refuse its own settings file and every
+     * setting in it (`BUG-50`). The sliders are fixed at their source; this makes it impossible from
+     * a path nobody has thought of yet.
+     */
+    private fun twoDecimals(value: Double): ConfigNode.Num = ConfigNode.Num(
+        value = Math.round(value * 100.0) / 100.0,
+        decimals = 2,
+    )
 
     public fun write(settings: KestrelSettings): ConfigNode {
         val stick = settings.stickProfile
@@ -260,9 +283,9 @@ public object SettingsDocument {
             // Written to the precision the slider offers. Belt as well as braces for `BUG-50`:
             // the slider is fixed at its source, and this makes it impossible for float error to
             // reach the file from a path nobody has thought of yet.
-            "controlScale" to ConfigNode.Num(twoDecimals(settings.controlScale)),
+            "controlScale" to twoDecimals(settings.controlScale),
             "scaleScheme" to ConfigNode.Num(SCALE_SCHEME.toDouble()),
-            "controlScalePortrait" to ConfigNode.Num(twoDecimals(settings.controlScalePortrait)),
+            "controlScalePortrait" to twoDecimals(settings.controlScalePortrait),
             "idle" to ConfigNode.Obj(
                 linkedMapOf(
                     "controlsEnabled" to ConfigNode.Bool(settings.idle.controlsEnabled),
@@ -276,9 +299,16 @@ public object SettingsDocument {
             ),
             "editor" to ConfigNode.Obj(
                 linkedMapOf(
-                    "gridUnit" to ConfigNode.Num(settings.editor.gridUnit),
+                    "gridUnit" to twoDecimals(settings.editor.gridUnit),
                     "snapToGrid" to ConfigNode.Bool(settings.editor.snapToGrid),
                     "snapToEdges" to ConfigNode.Bool(settings.editor.snapToEdges),
+                )
+            ),
+            "trigger" to ConfigNode.Obj(
+                linkedMapOf(
+                    "quickSeconds" to twoDecimals(settings.trigger.quickSeconds),
+                    "travelSeconds" to twoDecimals(settings.trigger.travelSeconds),
+                    "releaseSeconds" to twoDecimals(settings.trigger.releaseSeconds),
                 )
             ),
             "layoutId" to ConfigNode.Text(settings.layoutId),
@@ -293,10 +323,10 @@ public object SettingsDocument {
             ),
             "stick" to ConfigNode.Obj(
                 linkedMapOf(
-                    "deadzone" to ConfigNode.Num(stick.deadzone),
-                    "outerLimit" to ConfigNode.Num(stick.outerLimit),
-                    "curve" to ConfigNode.Num(stick.curve),
-                    "sensitivity" to ConfigNode.Num(stick.sensitivity),
+                    "deadzone" to twoDecimals(stick.deadzone),
+                    "outerLimit" to twoDecimals(stick.outerLimit),
+                    "curve" to twoDecimals(stick.curve),
+                    "sensitivity" to twoDecimals(stick.sensitivity),
                     "invertX" to ConfigNode.Bool(stick.invertX),
                     "invertY" to ConfigNode.Bool(stick.invertY),
                     "deadzoneShape" to ConfigNode.Text(stick.deadzoneShape.name.lowercase()),
@@ -443,6 +473,41 @@ public object SettingsDocument {
                 ) {
                     is Outcome.Failure -> return v
                     is Outcome.Success -> v.value.toInt()
+                },
+            )
+        )
+    }
+
+    private fun readTrigger(
+        obj: ConfigNode.Obj,
+        defaults: TriggerPreferences,
+    ): Outcome<TriggerPreferences> {
+        val trigger = when (val node = obj["trigger"]) {
+            null, ConfigNode.Null -> return Outcome.Success(defaults)
+            else -> when (val o = ConfigReader.asObject(node, "trigger")) {
+                is Outcome.Failure -> return o
+                is Outcome.Success -> o.value
+            }
+        }
+
+        fun seconds(field: String, fallback: Double): Outcome<Double> = optionalNumber(
+            trigger, field,
+            TriggerPreferences.MIN_SECONDS, TriggerPreferences.MAX_SECONDS, fallback, "trigger",
+        )
+
+        return Outcome.Success(
+            TriggerPreferences(
+                quickSeconds = when (val v = seconds("quickSeconds", defaults.quickSeconds)) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                },
+                travelSeconds = when (val v = seconds("travelSeconds", defaults.travelSeconds)) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                },
+                releaseSeconds = when (val v = seconds("releaseSeconds", defaults.releaseSeconds)) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
                 },
             )
         )

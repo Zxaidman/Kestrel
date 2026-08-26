@@ -13,6 +13,45 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.43-dev` — It Was Never The Decimals
+
+**Three rounds were spent adding precision to a problem precision cannot solve.** Two decimals made
+the anchor button jump 10.8 px. Three walked by a thousandth per cycle. Four walked by a
+ten-thousandth. Each time the step got smaller and the shape never changed.
+
+Changing a control's anchor is the one editor operation that is **purely a re-derivation** — the
+position is measured, expressed against a different origin, and stored again. Rounding at that step
+feeds the rounding error back into the next measurement, so the value walks by half a step per change
+however small the step is. Dragging looks like the same shape and is not: the finger is the authority
+on every frame, so its rounding cannot compound. That is why dragging never drifted and the anchor
+button always did.
+
+It no longer rounds there at all. Full precision is kept in memory and rounding happens where it
+belongs — when the value leaves the program. A hundred cycles of eight anchors, at five sizes, now
+land within a hundredth of a pixel.
+
+Placements are written and shown at **three** decimals: round in full, write short. The unsaved
+marker compares at file precision, because the question it asks is *"would the written file differ"*.
+
+**The trigger ramp is three settings** — how fast the first half arrives, how fast the second half
+travels, how fast it releases — and the second half is a third longer than it shipped. They live in
+`settings.json` beside the stick shaping, **not** in the layout document as `BUG-8` planned. A ramp
+is a feel preference, not a property of an arrangement, and two people sharing a layout should not be
+sharing each other's trigger feel. No schema version bump, no migration.
+
+**`settings.json` keeps its decimal places too** — `1.20`, not `1.2`. Two rather than the layout's
+three, because these are slider values and `1.200` would claim a precision the control cannot make.
+
+**Apply returns to the canvas; Cancel goes back to the menu.** Both windows now say what the value is
+*now*, unchanged by what is being typed, and each remembers where it was dragged to for the session.
+
+**The queue is re-sorted** around what a round costs rather than what is most wanted — see
+`todo-list.md`. The short version: build the test ground first because it makes every later round
+cheaper to confirm, restructure second because delaying it compounds, and batch the small editor
+items into one build because they share a menu and a schema bump.
+
+**Warning.** All unverified on a device.
+
 ### `0.0.42-dev` — Four Decimals, And Windows That Move
 
 **Three decimals stopped the jiggle and left the walk.** 1.1 px per anchor change compounds over a

@@ -192,23 +192,27 @@ proportions.
 
 ### Precision
 
-Placement numbers are written to **four decimal places, padded** — `0.1` is written `0.1000`. Two
-things ride on that.
+Placement numbers are written to **three decimal places, padded** — `0.1` is written `0.100`.
 
-**Four**, because an offset re-enters its own next computation. Changing a control's anchor means
-expressing one point from a different origin: the value is measured, re-derived and stored again. On
-a 1080-pixel short side, two decimals is 10.8 px and the control visibly jumped; three is 1.1 px and
-it stopped jumping and started *walking*, a thousandth per cycle of the eight anchors. Four is
-0.11 px, where a full cycle cannot compound past one storable step.
-
-The rule that came out of it: for a value that is fed back into its own next computation, the test is
-not whether one step can be seen — it is whether the error can accumulate past one storable step.
-
-**Padded**, because these files are hand-edited, and a column where one line reads `0.1` and the next
+**Padded**, because these files are hand-edited and a column where one line reads `0.1` and the next
 `0.2637` cannot be scanned by eye.
 
+**And rounded here and nowhere else**, which took three attempts to get right and is the more
+important half. Changing a control's anchor re-derives its offsets from its own previous offsets: the
+position is measured, expressed against a different origin, and stored again. Rounding at that step
+feeds the error back in, so the value walks by half a step per change — at two decimals (10.8 px on a
+1080-pixel short side), at three (1.1 px) and at four (0.11 px) alike. Adding decimals shrank the step
+and never changed the shape.
+
+**The rule that came out of it:** an operation whose only input is its own previous output must not
+round. Round when the value leaves the program. With the walk gone, three decimals is simply what a
+hand-edited file wants.
+
 A reader must accept any number of decimals; this is how Kestrel *writes*, not what it requires.
-Rotation is exempt — it is an angle in degrees, on a different scale from the four fractions.
+Rotation is exempt — it is an angle in degrees, on a different scale from the three fractions.
+
+Settings are padded to **two** decimals rather than three. They are slider values, and a slider offers
+two — writing `1.200` would claim a precision the control cannot produce.
 
 ### Insets
 

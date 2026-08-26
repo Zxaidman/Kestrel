@@ -94,6 +94,29 @@ class ReAnchoringTest {
         }
     }
 
+    /**
+     * `BUG-53`. The walk was never precision — it was rounding a value whose only input is its own
+     * previous output. Not rounding at all is what fixes it, and this is the check: a hundred
+     * cycles, which at any rounding step would have walked a hundred times as far as one.
+     */
+    @Test
+    fun `a hundred cycles do not move the control, because nothing is rounded in between`() {
+        val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.264, offsetY = 0.671, size = 0.12)
+
+        for (scale in listOf(0.5, 0.75, 1.0, 1.15, 1.2)) {
+            val was = start.scaledBy(scale).resolve(WIDE)
+            var walking = start
+            repeat(100) {
+                for (anchor in everyAnchor + Anchor.BOTTOM_LEFT) {
+                    walking = walking.reAnchored(WIDE, anchor, scale)
+                }
+            }
+            val now = walking.scaledBy(scale).resolve(WIDE)
+            assertEquals(was.centerX, now.centerX, 0.01, "x after 100 cycles at $scale")
+            assertEquals(was.centerY, now.centerY, 0.01, "y after 100 cycles at $scale")
+        }
+    }
+
     /** The same cycle at two decimals, which is what the project owner measured drifting. */
     @Test
     fun `a full cycle at two decimals drifts far enough to see`() {

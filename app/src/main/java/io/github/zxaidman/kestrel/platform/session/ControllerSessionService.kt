@@ -38,6 +38,11 @@ public object SessionState {
     public var profile: io.github.zxaidman.kestrel.core.input.AnalogProfile =
         io.github.zxaidman.kestrel.core.input.AnalogProfile.DEFAULT_STICK
 
+    /** How a trigger travels. Set from the screen so a change is felt on the next pull. */
+    @Volatile
+    public var trigger: io.github.zxaidman.kestrel.core.settings.TriggerPreferences =
+        io.github.zxaidman.kestrel.core.settings.TriggerPreferences()
+
     /** How large the on-screen controls are drawn. A hand's judgement, not arithmetic. */
     public val controlScale: androidx.compose.runtime.MutableState<Float> =
         mutableStateOf(
@@ -155,6 +160,7 @@ public class ControllerSessionService : Service() {
             this,
             engine,
             SessionState.profile,
+            SessionState.trigger,
             SessionState.controlScale.value,
             layout,
         )

@@ -16,6 +16,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import io.github.zxaidman.kestrel.core.input.AnalogProfile
+import io.github.zxaidman.kestrel.core.settings.TriggerPreferences
 import io.github.zxaidman.kestrel.core.input.GamepadControl
 import io.github.zxaidman.kestrel.core.input.applyStick
 import io.github.zxaidman.kestrel.core.layout.Anchor
@@ -66,6 +67,7 @@ public class ControllerOverlay(
     private val context: Context,
     private val engine: InputEngine,
     private var profile: AnalogProfile,
+    private var trigger: TriggerPreferences,
     private var scale: Float,
     private var layout: ControllerLayout,
 ) {
@@ -152,6 +154,18 @@ public class ControllerOverlay(
     public fun update(profile: AnalogProfile) {
         this.profile = profile
         clusters.forEach { it.profile = profile }
+    }
+
+    /**
+     * Changes how a trigger travels.
+     *
+     * Read on the next frame of a ramp rather than baked in when the window was built. The stick
+     * shaping had exactly that fault once — every slider moved a number in a file and nothing in the
+     * hand — and a feel setting nobody can feel while adjusting it is a feel setting nobody can set.
+     */
+    public fun update(trigger: TriggerPreferences) {
+        this.trigger = trigger
+        clusters.forEach { it.trigger = trigger }
     }
 
     /**
@@ -424,7 +438,7 @@ public class ControllerOverlay(
 
         val added = mutableListOf<ClusterView>()
         val ok = plan.all { piece ->
-            val view = ClusterView(context, engine, profile, piece.members, ::touched)
+            val view = ClusterView(context, engine, profile, trigger, piece.members, ::touched)
             runCatching {
                 windows?.addView(
                     view,
@@ -697,6 +711,7 @@ private class ClusterView(
     context: Context,
     private val engine: InputEngine,
     var profile: AnalogProfile,
+    var trigger: TriggerPreferences,
     private var controls: List<PlacedControl>,
     /** Told about every touch, so an untouched pad can decide it is not being used. */
     private val onUse: () -> Unit,
@@ -1181,14 +1196,21 @@ private class ClusterView(
                 val current = level[control.id] ?: 0f
                 if (current == target) return@forEach
                 val next = if (target > current) {
-                    // Two rates on the way up. The first half arrives in a tenth of a second, so
-                    // the press *registers* almost at once; the second half travels at the original
-                    // rate, so a full pull still takes a moment and still feels like a trigger
-                    // rather than a switch.
-                    val rate = if (current < HALF) HALF / QUICK_SECONDS else 1f / RISE_SECONDS
+                    // Two rates on the way up. The first half arrives quickly, so the press
+                    // *registers* almost at once; the second half travels, so a full pull still
+                    // takes a moment and still feels like a trigger rather than a switch.
+                    //
+                    // Read from the settings every frame, not captured when the window was built.
+                    // A feel setting nobody can feel while adjusting it is a feel setting nobody
+                    // can set — which the stick shaping was, once.
+                    val rate = if (current < HALF) {
+                        HALF / trigger.quickSeconds.toFloat().coerceAtLeast(0.01f)
+                    } else {
+                        HALF / trigger.travelSeconds.toFloat().coerceAtLeast(0.01f)
+                    }
                     min(target, current + seconds * rate)
                 } else {
-                    max(target, current - seconds / FALL_SECONDS)
+                    max(target, current - seconds / trigger.releaseSeconds.toFloat().coerceAtLeast(0.01f))
                 }
                 level[control.id] = next
                 sendTrigger(control, next.toDouble())
@@ -1224,26 +1246,12 @@ private class ClusterView(
         const val SECTOR = 0.42f
 
         /**
-         * How long a trigger takes to travel, in seconds.
+         * Where the pull changes rate.
          *
-         * Release is quicker than press on purpose: a control that lingers after the thumb has gone
-         * feels broken, while one that takes a moment to reach full feels like a trigger.
-         *
-         * **The press is two rates, and that is the project owner's own proposal** (`BUG-8`). A
-         * single 0.5s ramp was chosen for a measured reason and it made the press slow to
-         * *register*, which is a different complaint from how it feels. So the first half arrives
-         * in [QUICK_SECONDS] and the rest at the original rate: **0.35s to full**, which is also
-         * the number this was going to fall back to if the two-rate shape felt wrong.
-         *
-         * The only real risk was a target that treats the axis as a switch above a threshold, and
-         * for one of those this is *more* responsive rather than less.
-         *
-         * **Do not** turn this back into a step per frame. That gave 0.31s on a 120Hz panel and
-         * 0.5s on a 60Hz one — the ramp is measured in time, not in frames.
+         * The durations themselves are settings now (`TriggerPreferences`, `FEAT-66`); this is the
+         * point between them, and it stays fixed because "half" is what makes the two numbers mean
+         * something a person can reason about.
          */
-        const val RISE_SECONDS = 0.50f
-        const val FALL_SECONDS = 0.30f
-        const val QUICK_SECONDS = 0.10f
         const val HALF = 0.5f
     }
 }

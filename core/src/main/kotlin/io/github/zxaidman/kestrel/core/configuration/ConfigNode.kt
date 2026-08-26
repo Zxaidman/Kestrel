@@ -37,7 +37,19 @@ public sealed interface ConfigNode {
     public data class Num(
         public val value: Double,
         public val decimals: Int? = null,
-    ) : ConfigNode
+    ) : ConfigNode {
+        /**
+         * Equality is the number, and only the number.
+         *
+         * [decimals] is presentation: `0.5` written at two places and `0.5` written at none are the
+         * same value, and a document compared before and after a writer attached a hint must not
+         * read as changed. Generated equality did exactly that, and a test that checks an unknown
+         * field survives a round trip caught it — which is the test earning its keep.
+         */
+        override fun equals(other: Any?): Boolean = other is Num && other.value == value
+
+        override fun hashCode(): Int = value.hashCode()
+    }
 
     public data class Bool(public val value: Boolean) : ConfigNode
 

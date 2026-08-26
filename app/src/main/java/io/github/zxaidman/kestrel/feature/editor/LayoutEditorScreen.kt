@@ -95,6 +95,7 @@ import io.github.zxaidman.kestrel.core.layout.reAnchored
 import io.github.zxaidman.kestrel.core.layout.scaledBy
 import io.github.zxaidman.kestrel.core.layout.shapedAs
 import io.github.zxaidman.kestrel.core.settings.EditorPreferences
+import io.github.zxaidman.kestrel.core.settings.TriggerPreferences
 import io.github.zxaidman.kestrel.core.settings.IdlePreferences
 import io.github.zxaidman.kestrel.core.settings.KestrelSettings
 import io.github.zxaidman.kestrel.platform.display.DeviceSurface
@@ -199,6 +200,10 @@ public fun LayoutEditorScreen(
     // neither readable, so the parent steps aside — and stepping aside has to be reversible or it
     // is just closing with extra steps.
     var menuParked by remember(layout.header.id) { mutableStateOf<String?>(null) }
+    // Where each window was last dragged to, for this visit to the editor. Separate slots because
+    // the control menu and the size window are moved out of the way of different things.
+    var menuWhere by remember { mutableStateOf(Offset.Zero) }
+    var numbersWhere by remember { mutableStateOf(Offset.Zero) }
     var copied by remember { mutableStateOf<ControlStyle?>(null) }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     // The buttons and their captions are one block that can be dragged anywhere and put out of the
@@ -520,6 +525,8 @@ public fun LayoutEditorScreen(
                 element = menuElement,
                 device = device,
                 controlScale = controlScale,
+                position = menuWhere,
+                onMoved = { menuWhere = it },
                 landscape = !portrait,
                 copied = copied,
                 onSize = {
@@ -574,12 +581,18 @@ public fun LayoutEditorScreen(
                 element = selected,
                 device = device,
                 controlScale = controlScale,
+                position = numbersWhere,
+                onMoved = { numbersWhere = it },
                 landscape = !portrait,
                 portrait = portrait,
                 onDismiss = { done() },
                 onApply = { updated ->
                     working = working.replacing(updated)
-                    done()
+                    // Straight back to the canvas, not to the menu this came from. Cancel restores
+                    // the menu because nothing happened; Apply does not, because the whole point of
+                    // it is to see the change with nothing on top of it.
+                    typingNumbers = false
+                    menuParked = null
                 },
             )
         }
@@ -943,6 +956,8 @@ private fun ControlMenu(
     element: LayoutElement,
     device: LayoutSurface,
     controlScale: Float,
+    position: Offset,
+    onMoved: (Offset) -> Unit,
     landscape: Boolean,
     copied: ControlStyle?,
     onSize: () -> Unit,
@@ -954,12 +969,22 @@ private fun ControlMenu(
     onPaste: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    MenuAt(landscape = landscape, onDismiss = onDismiss) {
+    MenuAt(
+        landscape = landscape,
+        position = position,
+        onMoved = onMoved,
+        onDismiss = onDismiss,
+    ) {
         MenuHeader(
             title = element.id,
             detail = element.kind.family().label,
             onDismiss = onDismiss,
         )
+
+        // The steppers below nudge these numbers by a fixed amount, and the menu never said what
+        // they were nudging. A change of a known size to an unknown value is a change you cannot
+        // predict the result of.
+        NowLine(element, device, portrait)
 
         // Two to a row, not one long button each. The menu was taller than a portrait screen and
         // `copy` was simply off the bottom of it — a button nobody could reach, in a menu whose
@@ -1048,13 +1073,21 @@ private fun ControlMenu(
 @Composable
 private fun MenuAt(
     landscape: Boolean,
+    position: Offset,
+    onMoved: (Offset) -> Unit,
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Draggable, like the floating block and for the same reason: it opens in the middle, which is
     // the one place a pad never is — until a control is dragged there, and then the menu is on top
     // of the control it is about.
-    var moved by remember { mutableStateOf(Offset.Zero) }
+    //
+    // Where it was put is held by the caller, not here, so it survives the window closing. Dragging
+    // something out of the way and having that undone the moment it closes is the work being asked
+    // for twice. Each kind of window keeps its own, since they are moved out of the way of
+    // different things — and it is session state rather than a setting, like snapping was not.
+    var moved by remember { mutableStateOf(position) }
+    LaunchedEffect(moved) { onMoved(moved) }
     var size by remember { mutableStateOf(IntSize.Zero) }
     var within by remember { mutableStateOf(IntSize.Zero) }
     val liveMoved by rememberUpdatedState(moved)
@@ -1148,7 +1181,12 @@ private fun ControllerLayout.viewOf(portrait: Boolean): Any =
             element.binds,
             element.label,
             element.group,
-            element.placementFor(portrait),
+            // At the precision the file holds. The question this answers is "would the written
+            // document differ", not "do two doubles differ in the fifteenth place" — and since an
+            // anchor change keeps full precision in memory (`BUG-53`), the second question would
+            // report a cycle of eight anchors that returned exactly where it started as unsaved
+            // work, for ever.
+            element.placementFor(portrait).rounded(),
             element.shapeFor(portrait),
             element.portraitPlacement != null,
         )
@@ -1192,11 +1230,35 @@ private fun ControllerLayout.mergedOver(
 // --- the tools -----------------------------------------------------------------------------------
 
 
+/**
+ * Where the control is and how big it is, **as it stands**.
+ *
+ * In both the long-press menu and the size window. The menu offered steppers and never said what
+ * they were nudging; the size window pre-fills the current values and then those fields *become* the
+ * edited ones, so two keystrokes in there was nothing left to compare against. A control being
+ * changed by a fixed amount is a control whose starting number has to be visible.
+ */
+@Composable
+private fun NowLine(element: LayoutElement, device: LayoutSurface, portrait: Boolean) {
+    val p = element.placementFor(portrait)
+    val unit = device.shortSide
+    Text(
+        text = "now  %s\n     x %.3f  y %.3f\n     w %.3f  h %.3f   (%d × %d px)".format(
+            p.anchor.wireName,
+            p.offsetX, p.offsetY, p.width, p.height,
+            (p.width * unit).roundToInt(), (p.height * unit).roundToInt(),
+        ),
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = FontFamily.Monospace,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
 /** The selected control in both units at once, which is the only way the two read on one scale. */
 private fun LayoutElement.summary(device: LayoutSurface, portrait: Boolean): String {
     val unit = device.shortSide
     val p = placementFor(portrait)
-    return "$id  x %.4f  y %.4f  w %.4f  h %.4f   (%d × %d px)".format(
+    return "$id  x %.3f  y %.3f  w %.3f  h %.3f   (%d × %d px)".format(
         p.offsetX, p.offsetY, p.width, p.height,
         (p.width * unit).roundToInt(), (p.height * unit).roundToInt(),
     )
@@ -1343,6 +1405,46 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
             "interval and only ever fades: it is the way out, and a way out that hides itself is " +
             "not one.",
         style = MaterialTheme.typography.bodySmall,
+    )
+
+    Spacer(modifier = Modifier.height(2.dp))
+    Text("Triggers", style = MaterialTheme.typography.labelLarge)
+    Text(
+        text = "A pull travels in two stages. The first half arrives quickly so the press " +
+            "registers; the second half takes its time so a trigger still feels like one rather " +
+            "than a switch. Release is its own number because a control that lingers after the " +
+            "thumb has gone feels broken.",
+        style = MaterialTheme.typography.bodySmall,
+    )
+
+    fun ramp(update: (TriggerPreferences) -> TriggerPreferences) {
+        AppSettings.update { it.copy(trigger = update(it.trigger)) }
+        val updated = AppSettings.current.value.trigger
+        SessionState.trigger = updated
+        // Handed to the pad on screen, so the next pull uses it. Tuning a feel setting and having
+        // to restart the controls to feel it is tuning by memory.
+        SessionState.overlay?.update(updated)
+    }
+
+    val travel = settings.trigger
+    ShapedSlider(
+        "first half", travel.quickSeconds.toFloat(),
+        TriggerPreferences.MIN_SECONDS.toFloat()..1f, onPersist,
+    ) { v -> ramp { it.copy(quickSeconds = sliderValue(v)) } }
+    ShapedSlider(
+        "second half", travel.travelSeconds.toFloat(),
+        TriggerPreferences.MIN_SECONDS.toFloat()..TriggerPreferences.MAX_SECONDS.toFloat(), onPersist,
+    ) { v -> ramp { it.copy(travelSeconds = sliderValue(v)) } }
+    ShapedSlider(
+        "release", travel.releaseSeconds.toFloat(),
+        TriggerPreferences.MIN_SECONDS.toFloat()..1f, onPersist,
+    ) { v -> ramp { it.copy(releaseSeconds = sliderValue(v)) } }
+    Text(
+        text = "%.2fs to full, %.2fs back".format(
+            travel.quickSeconds + travel.travelSeconds, travel.releaseSeconds,
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
     )
 
     Spacer(modifier = Modifier.height(2.dp))
@@ -1602,6 +1704,8 @@ private fun NumbersDialog(
     element: LayoutElement,
     device: LayoutSurface,
     controlScale: Float,
+    position: Offset,
+    onMoved: (Offset) -> Unit,
     landscape: Boolean,
     portrait: Boolean,
     onDismiss: () -> Unit,
@@ -1613,10 +1717,10 @@ private fun NumbersDialog(
     val current = element.placementFor(portrait)
     // Three decimals, matching what is stored. Pre-filling `0.26` for a stored `0.264` would move
     // the control the moment Apply was pressed — a dialog that changes what it was opened to show.
-    var offsetX by remember { mutableStateOf("%.4f".format(current.offsetX)) }
-    var offsetY by remember { mutableStateOf("%.4f".format(current.offsetY)) }
-    var width by remember { mutableStateOf("%.4f".format(current.width)) }
-    var height by remember { mutableStateOf("%.4f".format(current.height)) }
+    var offsetX by remember { mutableStateOf("%.3f".format(current.offsetX)) }
+    var offsetY by remember { mutableStateOf("%.3f".format(current.offsetY)) }
+    var width by remember { mutableStateOf("%.3f".format(current.width)) }
+    var height by remember { mutableStateOf("%.3f".format(current.height)) }
     var problem by remember { mutableStateOf("") }
 
     // The body scrolls, and the message is the last thing in it. On a landscape phone that put it
@@ -1632,8 +1736,17 @@ private fun NumbersDialog(
     // This did not, and it offered numbers it had checked on a screen nobody was looking at.
     val scale = controlScale.toDouble().coerceAtLeast(0.01)
 
-    MenuAt(landscape = landscape, onDismiss = onDismiss) {
+    MenuAt(
+        landscape = landscape,
+        position = position,
+        onMoved = onMoved,
+        onDismiss = onDismiss,
+    ) {
         MenuHeader(title = element.id, detail = "size and position", onDismiss = onDismiss)
+        // What the control is *now*, unchanged by what is being typed. The fields start as the
+        // current values and then become the edited ones, so after two keystrokes there was nothing
+        // left to compare against.
+        NowLine(element, device, portrait)
         run {
             // Two to a row and the body scrolls. Four fields stacked in a dialog on a landscape
             // phone put width and height below the fold with no way to reach them, which is a
@@ -1821,9 +1934,18 @@ private fun LayoutElement.withNextAnchor(
     val current = placementFor(portrait)
     val next = order[(order.indexOf(current.anchor).coerceAtLeast(0) + 1) % order.size]
 
-    // The arithmetic that keeps the control still lives in the domain, where it can be tested and
-    // where there is one copy of it. This screen only decides which anchor is next.
-    return withPlacementFor(portrait, current.reAnchored(surface, next, scale).rounded())
+    // **Not rounded.** This is the one editor operation that is purely a re-derivation: nothing new
+    // comes in, the control's position is measured, expressed against a different origin and stored
+    // again. Rounding here feeds the rounding error back into the next measurement, so the value
+    // walks by half a step per change however small the step is — which is what three rounds of
+    // adding decimals failed to fix, because it was never a precision problem (`BUG-53`).
+    //
+    // Dragging looks like the same shape and is not: the finger is the authority on every frame, so
+    // its rounding cannot compound. That is why dragging never drifted and this button always did.
+    //
+    // Full precision is kept in memory and rounding happens where it belongs — when the value
+    // leaves the program, in the writer.
+    return withPlacementFor(portrait, current.reAnchored(surface, next, scale))
 }
 
 /**
@@ -1914,20 +2036,18 @@ private fun ControllerLayout.clustersOn(
  * arithmetic correct and the control still jumped, because *"changing the anchor does not move the
  * control"* is not a promise two decimals can keep.
  *
- * Three decimals is 1.1 px, which is below what an eye resolves — and that was the wrong test.
- * The value is fed back into its own next computation, so eight anchor changes in a cycle
- * accumulated into one whole storable step and repeating the cycle walked the number 0.260, 0.261,
- * 0.262 (`BUG-52`). Invisible per step is not the same as stable.
+ * Three decimals walked by a thousandth per cycle. Four walked by a ten-thousandth. **Each time the
+ * step got smaller and the shape did not**, because adding decimals was the wrong answer to the
+ * question — see `withNextAnchor`, which no longer rounds at all. Precision cannot fix a value that
+ * re-derives itself through a lossy step; not taking the lossy step can.
  *
- * **The test for a value that re-enters its own computation is whether the error can accumulate
- * past one storable step**, not whether one step can be seen. Four decimals is 0.11 px here, so a
- * full cycle cannot reach even one step. Used everywhere — the file, the readouts, the numbers
- * dialog, and the scan that reports an offset range.
+ * With that gone, three decimals is what a file and a readout want: 1.1 px, and tidy enough to
+ * hand-edit. Memory keeps whatever the arithmetic produced.
  */
-private const val PLACES = 10000.0
+private const val PLACES = 1000.0
 
-/** Decimal places in the file, matching [PLACES]. `FEAT-60` writes every placement to exactly this. */
-internal const val PLACEMENT_DECIMALS: Int = 4
+/** Decimal places shown and written, matching [PLACES]. */
+internal const val PLACEMENT_DECIMALS: Int = 3
 
 private fun round(value: Double): Double = Math.round(value * PLACES) / PLACES
 
@@ -1947,7 +2067,7 @@ private fun sliderValue(value: Float): Double = Math.round(value * 100f) / 100.0
  * Scanned rather than solved. The offset-to-pixels relation depends on the anchor and on the
  * shape's own squaring-up, and a formula that has to agree with `resolve` and `shapedAs` is a
  * second copy of both that will drift from them. It runs only after a value has been refused, so
- * eighty thousand cheap probes cost a few milliseconds nobody can feel.
+ * eight thousand cheap probes cost nothing anybody can feel.
  *
  * Stepped at the precision a placement is stored at. Stepping coarser than that understates the
  * limit by up to one step — reported as *"calculation is off by 0.01"*, which it was.
@@ -1987,7 +2107,7 @@ private fun offsetLimit(
     return if (low == null || high == null) {
         "$name has no value that fits — the control is too big for the screen this way"
     } else {
-        "$name has to be between %.4f and %.4f".format(low, high)
+        "$name has to be between %.3f and %.3f".format(low, high)
     }
 }
 
