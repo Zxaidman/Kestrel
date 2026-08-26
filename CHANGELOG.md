@@ -13,6 +13,45 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.44-dev` — A Place To Press Things
+
+**Build 1 of the re-sorted queue, and its point is to make every later round cheaper.**
+
+**There is a test ground.** One screen showing every control, lighting as the platform delivers it
+back. The loop that found every input fault in this project — press something, read a number — used
+to run inside a target application: put the pad up, launch an emulator, press a button, watch a
+character. Every behaviour claim cost a full session and a wrong one cost another.
+
+It says three things a game cannot. What has been proven so far, kept across the sweep. How far an
+axis actually went — a trigger stuck at a third of its range still arrives, and a stick reading 0.7
+at its corner has a problem, and both look like "it works" in a game. And which of the pad's eight
+directions are dead, because seven working is a fault a game shows only when a player needs the
+eighth.
+
+What counts as *proven* lives in `:core` and is unit tested; the Android half is key codes and axis
+constants. **Nothing there creates input** — it observes the same events a game would receive.
+
+**A window cannot outgrow the screen any more.** The size window broke in landscape: its body had a
+scroll and a height cap, and its header, readout and buttons sat outside that, so adding one row
+pushed Apply and Cancel off the bottom. The bound and the scroll moved into the container every
+window uses, so no window can overflow however many rows go in — a cap on the contents was a cap on
+the wrong thing. Windows are dragged by a handle now, since a scrolling body takes the touch first
+and a scrollable window could no longer be moved.
+
+**The editing guide follows the layout instead of one button.** It was written by *Copy layout to my
+folder*, and the editor is reached by a different path that writes a copy of its own. It is written
+by the repository now, on every route, and the screen reads the file back instead of assuming.
+
+**`sensor-portrait` is gone**, and files naming it load as `portrait` rather than being refused. It
+behaved exactly like `portrait` on any phone that does not support reverse portrait, which is most of
+them.
+
+**Rows say what they are** — `anchor`, `position`, `size` — and the trigger defaults are the measured
+0.20 / 0.50 / 0.30 rather than the guessed 0.10 / 0.35 / 0.30.
+
+**Warning.** The trigger defaults are one hand on one device. And all of the above is unverified on a
+device.
+
 ### `0.0.43-dev` — It Was Never The Decimals
 
 **Three rounds were spent adding precision to a problem precision cannot solve.** Two decimals made

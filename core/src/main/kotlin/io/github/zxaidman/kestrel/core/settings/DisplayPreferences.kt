@@ -24,20 +24,27 @@ public enum class AppOrientation(public val wireName: String) {
 
     /** Portrait, and stay there. */
     PORTRAIT("portrait"),
-
-    /**
-     * Portrait, flipping when the phone is turned over — where the phone allows it.
-     *
-     * Most do not. Reverse portrait is unsupported on a great many devices, so this often behaves
-     * exactly like [PORTRAIT]; that is the platform's answer rather than Kestrel's, and there is no
-     * separate reverse-portrait option because it would be an option that does nothing.
-     */
-    SENSOR_PORTRAIT("sensor-portrait"),
     ;
 
     public companion object {
-        public fun of(wireName: String): AppOrientation? =
-            entries.firstOrNull { it.wireName == wireName }
+        /**
+         * Reads an orientation, including one name an earlier build wrote.
+         *
+         * **`sensor-portrait` was removed** (`BUG-4`). It meant "portrait, flipping when the phone
+         * is turned over", and most phones do not support reverse portrait at all — so on the
+         * device in front of the user it behaved exactly like [PORTRAIT]. An option that does
+         * nothing is worse than one that is absent, which is the same reasoning that kept
+         * reverse-portrait out in the first place.
+         *
+         * It is **read as `portrait`** rather than refused. A settings file on a phone says that
+         * word, and a file a previous version of Kestrel wrote must not become a file this version
+         * refuses — the same rule the two old theme names get. It maps to the behaviour the user
+         * was already getting, so nothing changes for them but the name in the file.
+         */
+        public fun of(wireName: String): AppOrientation? = when (wireName) {
+            "sensor-portrait" -> PORTRAIT
+            else -> entries.firstOrNull { it.wireName == wireName }
+        }
     }
 }
 
@@ -195,11 +202,17 @@ public data class IdlePreferences(
  * and 0.5s on a 60Hz one; a ramp is measured in time.
  */
 public data class TriggerPreferences(
-    /** Seconds for the first half of the pull. Short, so the press registers almost at once. */
-    public val quickSeconds: Double = 0.10,
+    /**
+     * Seconds for the first half of the pull. Short, so the press registers almost at once.
+     *
+     * **Measured, not reasoned.** 0.10 was arithmetic; the project owner tried the sliders and said
+     * 0.20. A hand outranks the arithmetic that produced the guess — on one device, with one set of
+     * target applications, which is what a default is.
+     */
+    public val quickSeconds: Double = 0.20,
 
     /** Seconds for the second half. Longer, so a full pull still feels like a trigger. */
-    public val travelSeconds: Double = 0.35,
+    public val travelSeconds: Double = 0.50,
 
     /**
      * Seconds to fall back to nothing.

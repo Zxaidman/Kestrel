@@ -52,14 +52,15 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.43-dev`
+## State of the queue — build `0.0.44-dev`
 
 | Phase | Items |
 | --- | --- |
 | `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
 | `testing` | — |
-| `building` | `BUG-53`, `FEAT-62`–`FEAT-66` |
+| `testing` | Build 1 — `FEAT-3`, `BUG-3`, `BUG-4`, `BUG-54`, `FEAT-67`, `FEAT-68` |
+| `building` | — |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -625,7 +626,7 @@ where the same ninth of the screen was. Both snap now, and the region is a littl
 
 ### `FEAT-55` — The ceiling is 120%, and overlap above the guarantee is marked
 
-**Phase:** `building` — `0.0.39-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.39-dev`.
 **Reported and asked for:** build `0.0.38-dev`, points 1–4. *"from 50% to 115% is good above it
 overlapping but without editor marking it. for now I would say mark it as done set the limit at 120%
 max."*
@@ -647,7 +648,7 @@ themselves has whatever ceiling its own spacing gives it, which is what the mark
 
 ### `FEAT-56` — The off-screen refusal names the offsets it would accept
 
-**Phase:** `building` — `0.0.39-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.39-dev`.
 **Asked for:** build `0.0.38-dev`, points 5–7. *"now it's gives warning on size saying only between
 this value and that value is possible same should be followed for offset though it only give generic
 warning."*
@@ -664,7 +665,7 @@ derived from a formula: a second copy of that geometry is a second copy that wil
 
 ### `FEAT-57` — Four status lines, one fact each
 
-**Phase:** `building` — `0.0.39-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.39-dev`.
 **Asked for:** build `0.0.38-dev`, points 9–11. *"Keep the 4 status line Which was helpful before,
 You reduce the font size if you want. Reserve on for Warnings only show when needed / One for layout
 profile name / One for selected button name / And one for its size and position."*
@@ -682,7 +683,7 @@ with it. They are back as four short lines in a small face:
 
 ### `BUG-46` — Save wrote both arrangements, not the one on screen
 
-**Phase:** `building` — `0.0.39-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.39-dev`.
 **Reported:** build `0.0.38-dev`. *"if I click save inside landscape with would save both of my
 layout at once, which is not good if I have messing layout in portrait same for vice-versa."*
 
@@ -709,7 +710,7 @@ work as filed while the file still held what it held before.
 
 ### `FEAT-58` — Leaving says which arrangement is still unsaved
 
-**Phase:** `building` — `0.0.39-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.39-dev`.
 **Asked for:** build `0.0.38-dev`. *"after this bug fixes if one layout is change and while other is
 save when user try to exit pop now should say editing still pending go to this view first or close
 it."*
@@ -725,7 +726,7 @@ leaving.
 
 ### `BUG-47` — The numbers dialog checked the screen at 100%, not at the size the pad is drawn
 
-**Phase:** `building` — `0.0.40-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.40-dev`.
 **Reported:** build `0.0.39-dev`. *"it show X offset takes value between 2.21 then I put 2 and it
 went outside of screen bound."*
 
@@ -742,7 +743,7 @@ not, and neither did the range it printed.
 
 ### `BUG-48` — Changing the anchor moved the control at any size but 100%
 
-**Phase:** `building` — `0.0.40-dev`.
+**Phase:** `done` — built and confirmed, then the scale half was right and confirmed; the drift that remained was `BUG-51`, `BUG-52` and finally `BUG-53`.
 **Reported:** build `0.0.39-dev`. *"there is regression related to anchor point we discussed and
 implementation that if user change the anchor point button should always stay without moving. which
 was working on previous built but it regaress in this build."*
@@ -764,7 +765,7 @@ scale back out — which is what dragging already does, three lines below the co
 
 ### `BUG-49` — A layout was reported corrupt after saving
 
-**Phase:** `building` — `0.0.40-dev`, guard only.
+**Phase:** `done` — the guard is in place and unit tested. **No device test can confirm it** without a deliberately broken document, and the fault it was built for turned out to be `BUG-50` in a different file.
 **Reported:** build `0.0.39-dev`. *"it got my previous save file corrupt… i deleted profile and
 restart it now it is working."*
 
@@ -787,7 +788,7 @@ fault with a cause.
 
 ### `FEAT-59` — A refused value scrolls itself into view
 
-**Phase:** `building` — `0.0.40-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.40-dev`.
 **Asked for:** build `0.0.39-dev`, points 6–7. *"enter invalid value and clicking apply button, i
 press two or three time, then scroll to see the warning, so if there is scroll and apply invalid
 value then it should auto scroll so user can see the problem."*
@@ -800,7 +801,7 @@ The body now scrolls to the message when one appears.
 
 ### `BUG-50` — The size slider wrote a number Kestrel then refused to read
 
-**Phase:** `building` — `0.0.41-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.41-dev`.
 **Reported with the file:** build `0.0.40-dev`. *"it actually didn't corrupt it but took value from
 slider as above 1.20, and also above 2 decimal as it should not have taken above it from slider."*
 
@@ -841,7 +842,7 @@ something compares it to a bound.
 
 ### `BUG-51` — Cycling the anchor drifts, a hundredth at a time
 
-**Phase:** `building` — `0.0.41-dev`.
+**Phase:** `done` — built and confirmed, then three decimals helped and was not the answer; `BUG-53` found the cause.
 **Measured by the project owner**, build `0.0.40-dev`, and the numbers are the diagnosis:
 
 | scale | before | after one round trip |
@@ -875,7 +876,7 @@ slightly less tidy. The shipped built-in is unchanged.
 
 ### `BUG-52` — Three decimals was better and still not enough
 
-**Phase:** `building` — `0.0.41-dev` → four decimals in `0.0.42-dev`.
+**Phase:** `done` — built and confirmed, then four decimals helped and was not the answer; `BUG-53` found the cause.
 **Measured by the project owner**, build `0.0.41-dev`: *"working with changes below 105% but moving
 by `0.001` above 105% each round trip from 0.260 > 0.261 > 0.262. with no visible jiggling."*
 
@@ -900,7 +901,7 @@ accumulate past one storable step, and at three decimals it could.
 
 ### `FEAT-60` — A layout file keeps its decimal places
 
-**Phase:** `building` — `0.0.42-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.42-dev`.
 **Asked for:** build `0.0.41-dev`, point 13. *"my existing one layout json is still 1 or 2 decimals
 for example if 0.1 is saved them .json should show 0.100 instead of trailing it. so it maintains
 decimal consistency."*
@@ -920,7 +921,7 @@ it is written today, so no other document changes shape.
 
 ### `FEAT-61` — Every window is draggable, and a parent steps aside for its child
 
-**Phase:** `building` — `0.0.42-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.42-dev`.
 **Asked for:** build `0.0.41-dev`. *"make any current popup windows or future window draggable just
 like gamepad dialog menu… and if new window is open hide it's parent window temporary once child
 window closed reopen it. same should be apply for floating button when gamepad dialog window is
@@ -942,7 +943,7 @@ Three rules, one shape:
 
 ### `BUG-53` — The walk was never precision. It was rounding a value that re-derives itself
 
-**Phase:** `building` — `0.0.43-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.43-dev`.
 **Measured by the project owner**, build `0.0.42-dev`: *"still off by `0.0001`, `0.2600` becomes
 `0.2601`, doing it 5 times increases to `0.2605` at 120%."*
 
@@ -980,7 +981,7 @@ the value leaves the program.
 
 ### `FEAT-62` — Settings numbers keep their places too
 
-**Phase:** `building` — `0.0.43-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.43-dev`.
 **Observed:** build `0.0.42-dev`, point 5. *"only layout.json has update, my new settings still uses
 upto 0.00 only."*
 
@@ -996,7 +997,7 @@ cannot produce.
 
 ### `FEAT-63` — Apply returns to the canvas; Cancel goes back to the menu
 
-**Phase:** `building` — `0.0.43-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.43-dev`.
 **Asked for:** build `0.0.42-dev`, point 11. *"apply should send user again to layout editor not the
 menu return."*
 
@@ -1008,7 +1009,7 @@ change on the canvas with nothing on top of it.
 
 ### `FEAT-64` — A window says what the value is now, not only what it will be
 
-**Phase:** `building` — `0.0.43-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.43-dev`.
 **Asked for:** build `0.0.42-dev`, point 12. *"I want button current size and position in menu and
 size dialog also to compare what change value from which value."*
 
@@ -1023,7 +1024,7 @@ Both now carry the position and size **as they stand**, unchanged by what is bei
 
 ### `FEAT-65` — A window opens where it was left
 
-**Phase:** `building` — `0.0.43-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.43-dev`.
 **Asked for:** build `0.0.42-dev`, point 13. *"menu dialog should remember their last position per
 session."*
 
@@ -1033,6 +1034,59 @@ different things.
 
 Not written to settings, for the same reason snapping is not: it is working state, and every field in
 that file is one more thing to version and migrate.
+
+---
+
+### `BUG-54` — The size window stopped scrolling when it became a movable window
+
+**Phase:** `testing` — built in `0.0.44-dev` as Build 1, awaiting a device result. What was built is in `done-list.md`.
+**Reported with a screenshot:** build `0.0.43-dev`. *"size dialog in landscape got broken. it doesn't
+have scroll now."*
+
+**A regression I caused, and the shape of it is worth recording.** `FEAT-59` gave the dialog a
+scrolling body so a refused value could be seen on a landscape phone. `FEAT-61` then moved the dialog
+out of `AlertDialog` and into the movable container — and `AlertDialog` had been supplying the
+*outer* bound. The inner body kept its scroll and its 320dp cap; the header, the new **now** line and
+the buttons sat outside it, so the window as a whole grew past the screen and Apply and Cancel went
+off the bottom.
+
+`FEAT-64` added a row. That is what pushed it over, and it is exactly what the project owner asked
+to be impossible:
+
+> *"make sure any current or future dialog popup don't get broken by adding new rows"*
+
+**So the fix is structural, not a number.** The bound and the scroll move into the container every
+window uses, so no window can outgrow the screen however many rows are put in it — and a window
+added next year inherits it without anybody remembering to.
+
+**Do not** put a height cap on a window's contents. Cap the window.
+
+---
+
+### `FEAT-67` — Say which row is position and which is size, at the row
+
+**Phase:** `testing` — built in `0.0.44-dev` as Build 1, awaiting a device result. What was built is in `done-list.md`.
+**Asked for:** build `0.0.43-dev`. *"add which row is size and which is position before value instead
+on at top, add it beside the row below now."*
+
+A paragraph at the top explaining what offsets mean is a paragraph read once and then scrolled past
+for ever, and it was taking three lines of a window that had run out of room. The rows say what they
+are, where they are — `position` beside `x`/`y`, `size` beside `w`/`h`, in the **now** block and
+above the fields both.
+
+---
+
+### `FEAT-68` — The measured trigger defaults
+
+**Phase:** `testing` — built in `0.0.44-dev` as Build 1, awaiting a device result. What was built is in `done-list.md`.
+**Measured by the project owner**, build `0.0.43-dev`: *"20/50/30 feel alright on my device, make it
+default."*
+
+0.20s to halfway, 0.50s for the rest, 0.30s to release — **0.70s to full**, against the 0.45s that
+was guessed. A hand said so, which outranks the arithmetic that produced 0.45.
+
+**Warning.** One hand, one device, one set of target applications. It is a better default than a
+guessed one and it is not a measurement of anybody else.
 
 ---
 
@@ -1071,7 +1125,7 @@ cutout mode and insets accordingly.
 
 ### `BUG-3` — `HOW-TO-EDIT.md` is not written
 
-**Phase:** `pending`
+**Phase:** `testing` — built in `0.0.44-dev` as Build 1, awaiting a device result. What was built is in `done-list.md`.
 
 **Reported**, `0.0.25-dev`: *"no, `HOW-TO-EDIT.md` found"* — meaning it was not found.
 
@@ -1087,7 +1141,7 @@ succeeded.
 
 ### `BUG-4` — `sensor-portrait` does nothing and should go
 
-**Phase:** `pending`
+**Phase:** `testing` — built in `0.0.44-dev` as Build 1, awaiting a device result. What was built is in `done-list.md`.
 
 **Reported**, `0.0.25-dev`: *"sensor portrait is useless just like reverse portrait discard it"*.
 
@@ -1139,7 +1193,7 @@ worth paying, which would be a measured experiment rather than a code change.
 
 ### `BUG-7` — The trigger's clockwise border sweep should go
 
-**Phase:** `building` — `0.0.39-dev`. The next item in the project owner's order of work.
+**Phase:** `done` — confirmed on the reference device against build `0.0.39-dev`.
 
 **Built.** The edge now fills bottom-to-top in the control's own shape, the same way the face does,
 for every shape. The circle's sweep is gone.
@@ -1166,7 +1220,7 @@ control affected.
 
 ### `FEAT-66` — The trigger ramp is three settings, and the pull is longer
 
-**Phase:** `building` — `0.0.43-dev`.
+**Phase:** `done` — confirmed on the reference device against build `0.0.43-dev`.
 **Asked for:** build `0.0.42-dev`, point 16. *"working, just make later part bit more longer. yeah
 add setting option that would be for the best, with how quick 1st step and 2nd step and release. good
 idea."*
@@ -1191,11 +1245,14 @@ follow it.
 ### `BUG-8` — A trigger takes too long to register
 
 **Phase:** `done` — confirmed on the reference device against build `0.0.42-dev`: *"yes working."*
-Made configurable and lengthened by `FEAT-66`. Originally built in `0.0.42-dev`, the ramp only. **The configurable field is deliberately not in
-this build**, and the reason is that it needs a schema version bump, a migration, a
-`docs/CONFIGURATION_SCHEMA.md` update and a settings control — a round of its own, and none of it is
-worth doing before the shape has been felt by a hand. The number the project owner is hitting is
-fixed now; making it adjustable follows the confirmation, not the other way round.
+Made configurable and lengthened by `FEAT-66`. Originally built in `0.0.42-dev` as the ramp only, then made adjustable by `FEAT-66` in `0.0.43-dev`
+once the shape had been felt.
+
+**Where the adjustable version ended up is not where this entry planned.** This said a field in the
+*layout* document, meaning a schema version bump and a migration. `FEAT-66` put it in `settings.json`
+instead: a ramp is a feel preference like dead zone and curve, not a property of an arrangement, and
+two people sharing a layout should not share each other's trigger feel. No layout schema bump was
+needed after all.
 
 **Built.** The project owner's own proposal: the first half fills fast, the second half at the
 original rate. 0.10s to halfway and 0.25s from there — **0.35s to full**, which is also the fallback
@@ -1635,7 +1692,7 @@ addition and its own editing. Not a variation on an existing kind.
 
 ### `FEAT-3` — A test ground for every control
 
-**Phase:** `pending`
+**Phase:** `testing` — built in `0.0.44-dev` as Build 1, awaiting a device result. What was built is in `done-list.md`.
 
 **Requested, and the project owner's stated next priority**, with a reference image: a screen
 showing the whole pad with every control lighting as it is pressed, every axis printing its value
@@ -2873,6 +2930,42 @@ out of the way with a window up → `FEAT-61`.
   not content — caught by an existing round-trip test, which is that test earning its keep.
 - **The queue is re-sorted around what a round costs**, not around what is most wanted. See
   **Order of work**.
+
+---
+
+### Round `0.0.43-dev` — the drift ends, and a question about bookkeeping
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–4 | The anchor, at every size | **Working.** The walk is gone |
+| 5–7 | The now line, the files | **Working** |
+| 8–12 | The windows | **Working**, but the size window broke in landscape → `BUG-54`, and the rows should say what they are → `FEAT-67` |
+| 13–17 | The trigger | **Working**; 20/50/30 measured as the defaults → `FEAT-68` |
+| 18 | Regression | None seen |
+
+**And a fair question about the re-sort:** *"BUG-1, 2, 7, 8 are dropped, but did they get fixed?"*
+
+All four were fixed and confirmed — but **the question was warranted, because my bookkeeping had
+drifted.** Twenty-one items were still marked `building` in this file after the project owner had
+confirmed them, `BUG-7` among them. Entries were being added every round and never swept. The whole
+file has been swept and every phase now matches what was actually reported.
+
+**Do:** sweep the phases in the same commit as the round they belong to. A queue that lags behind
+reality is a queue that has to be re-read to be trusted, which is most of the value gone.
+
+### Decisions this round
+
+- **A window is dragged by a handle, not by its body**, now that bodies scroll. Both are a vertical
+  drag and a child scroll takes the touch first, so a window that could scroll could no longer be
+  moved. One bar settles it for every window instead of per window.
+- **A window's height is capped by the container, not by its contents.** The size window had a cap on
+  its body while its header and buttons sat outside — adding one row pushed Apply off the screen.
+- **The editing guide moved into `LayoutRepository`.** It was written by one button, and the project
+  owner reached the editor by another. Correct code on the wrong path.
+- **`sensor-portrait` is read as `portrait`, not refused.** A file an older build wrote must not
+  become a file this build rejects.
+- **The test ground's judgement lives in `:core`.** What counts as *proven* is the thing worth
+  testing, and it should not live somewhere only a phone can run it.
 
 ---
 

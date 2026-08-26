@@ -108,8 +108,37 @@ public class LayoutRepository(private val store: DocumentStore) {
         val readBack = Json.parse(text).flatMap { ControllerLayoutReader.read(it) }
         if (readBack is Outcome.Failure) return readBack
 
-        return store.write(StoreFolder.LAYOUTS, fileName(id.value), text)
+        return when (val written = store.write(StoreFolder.LAYOUTS, fileName(id.value), text)) {
+            is Outcome.Failure -> written
+            // The guide goes beside the layout on **every** route that writes one, which is what
+            // `BUG-3` was: it was written by one button, and the project owner reached the editor
+            // by another. Correct code on the wrong path.
+            //
+            // Best effort, and deliberately so — the layout is the payload and the guide is a
+            // courtesy. A folder that will not take a second file must not lose somebody's
+            // arrangement. [guideIsPresent] is how a screen finds out rather than assuming.
+            is Outcome.Success -> {
+                runCatching {
+                    store.write(
+                        StoreFolder.LAYOUTS,
+                        LayoutEditingGuide.FILE_NAME,
+                        LayoutEditingGuide.text(),
+                    )
+                }
+                written
+            }
+        }
     }
+
+    /**
+     * Whether the editing guide is actually beside the layouts.
+     *
+     * **Read back, not assumed.** `BUG-3` asked for exactly this: the old code called a writer and
+     * a screen then told the user the file was there. A write that returned without throwing is not
+     * a file on a phone.
+     */
+    public fun guideIsPresent(): Boolean =
+        store.read(StoreFolder.LAYOUTS, LayoutEditingGuide.FILE_NAME) is Outcome.Success
 
     /**
      * Copies a layout into a new one the user owns.

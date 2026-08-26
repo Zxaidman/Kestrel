@@ -354,14 +354,27 @@ public object SettingsDocument {
         val orientation = if (!display.has("orientation")) {
             defaults.orientation
         } else {
-            when (
-                val v = ConfigReader.enum(
-                    display, "orientation", AppOrientation.entries.toTypedArray(),
-                    { it.wireName }, "display",
-                )
-            ) {
-                is Outcome.Failure -> return v
-                is Outcome.Success -> v.value
+            // Through `AppOrientation.of`, not a bare enum lookup, so the one name an earlier
+            // build wrote still loads. `ConfigReader.enum` would refuse `sensor-portrait` and take
+            // the whole document with it.
+            when (val node = display["orientation"]) {
+                is ConfigNode.Text -> AppOrientation.of(node.value)
+                    ?: return Outcome.Failure(
+                        ConfigurationError.UnknownValue(
+                            path = "display.orientation",
+                            found = node.value,
+                            allowed = AppOrientation.entries.map { it.wireName }.toSet(),
+                        )
+                    )
+                else -> when (
+                    val v = ConfigReader.enum(
+                        display, "orientation", AppOrientation.entries.toTypedArray(),
+                        { it.wireName }, "display",
+                    )
+                ) {
+                    is Outcome.Failure -> return v
+                    is Outcome.Success -> v.value
+                }
             }
         }
 

@@ -664,6 +664,95 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
+## Built, awaiting confirmation — `0.0.44-dev` (Build 1)
+
+### `FEAT-3` — A test ground for every control
+
+**The loop that found every input fault in this project, moved into the product.** Press something,
+read a number. Until now that loop ran inside a target application — put the pad up, launch an
+emulator, press a button, watch a character — so every claim about behaviour cost a full session and
+a wrong one cost another.
+
+One screen. Kestrel injects, the platform delivers the event back to this window like any other, and
+the board says what arrived. **Nothing there creates input**; it observes the same events a game
+would receive.
+
+Three things it says that a game cannot:
+
+- **What has been proven and what has not**, kept across the sweep, so controls can be pressed in any
+  order without remembering what has been tried.
+- **How far an axis actually went.** A trigger stuck at a third of its range still arrives; a stick
+  reading 0.7 at its corner has a problem. Both look like "it works" in a game. Neither is *proven*
+  below 0.85.
+- **Which of the pad's eight directions are dead.** Seven working is a fault a game shows only when a
+  player happens to need the eighth — so a pad is not proven until all eight have arrived.
+
+**The judgement is in `:core` and unit tested** — `ProofBoard`, `ControlReading`, `PadDirection` —
+because what counts as proven is the part worth testing and should not live where only a phone can
+run it. The Android half is key codes and axis constants, which stay in `feature/testground/`. The
+pad is read from both key codes and the hat axis, since devices differ and that difference is exactly
+what this screen exists to show.
+
+Reached from **Test ground** on the diagnostics screen. Unverified on a device.
+
+---
+
+### `BUG-54` — A window cannot outgrow the screen
+
+`FEAT-59` gave the size dialog a scrolling body. `FEAT-61` moved it out of `AlertDialog` into the
+movable container — and `AlertDialog` had been supplying the outer bound. The body kept its scroll
+and a 320dp cap; the header, the **now** line and the buttons sat outside it. `FEAT-64` then added a
+row, and Apply and Cancel went off the bottom of a landscape screen.
+
+**The bound and the scroll moved into the container every window uses**, so no window can outgrow the
+screen however many rows go into it, and a window added later inherits it without anybody remembering
+to. A cap on the contents is a cap on the wrong thing and it fails silently the next time somebody
+adds a row.
+
+**A window is dragged by a handle now.** Both dragging and scrolling are a vertical drag and a child
+scroll takes the touch before its parent, so a scrollable window could no longer be moved. One bar at
+the top of every window settles it once rather than per window.
+
+---
+
+### `BUG-3` — The guide follows the layout, not the button
+
+It was written by **Copy layout to my folder** only, and the project owner reached the editor through
+**Edit layout**, which writes a copy by a different path. Correct code on the wrong path.
+
+`LayoutEditingGuide` moved into `:core` and `LayoutRepository.save` writes it, so every route that
+puts a layout in the user's folder puts the guide beside it — including any route added later.
+Best-effort: the layout is the payload and the guide a courtesy, so a folder that will not take a
+second file must not lose an arrangement. `guideIsPresent()` reads the file back, because a write
+that returned without throwing is not a file on a phone — and the screen now says what is actually
+there rather than promising it.
+
+---
+
+### `BUG-4` — `sensor-portrait` is gone, and old files still load
+
+It meant "portrait, flipping when the phone is turned over", and most phones do not support reverse
+portrait — so it behaved exactly like `portrait`. An option that does nothing is worse than one that
+is absent.
+
+**Read as `portrait` rather than refused.** A settings file on a phone says that word, and a file a
+previous version wrote must not become a file this version rejects — the same rule the two old theme
+names get. Nothing changes for the user but the name in the file.
+
+---
+
+### `FEAT-67`, `FEAT-68` — the round's smaller asks
+
+Each row says what it is, at the row: `anchor`, `position`, `size`. The paragraph at the top is one
+short line now — a paragraph explaining that offsets run inwards is read once and scrolled past for
+ever, and it was taking three lines of a window that had run out of them.
+
+Trigger defaults are **0.20 / 0.50 / 0.30**, measured by the project owner against the 0.10 / 0.35 /
+0.30 that was guessed. 0.70s to full. **One hand, one device** — a better default than a guessed one
+and not a measurement of anybody else.
+
+---
+
 ## Built, awaiting confirmation — `0.0.43-dev`
 
 ### `BUG-53` — The walk was rounding, not precision

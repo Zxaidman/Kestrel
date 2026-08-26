@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -65,6 +67,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -73,6 +76,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.zxaidman.kestrel.core.common.Outcome
 import io.github.zxaidman.kestrel.core.input.AnalogProfile
@@ -1076,6 +1080,8 @@ private fun MenuAt(
     position: Offset,
     onMoved: (Offset) -> Unit,
     onDismiss: () -> Unit,
+    /** Supplied when the window needs to scroll itself to something — see `FEAT-59`. */
+    scroll: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Draggable, like the floating block and for the same reason: it opens in the middle, which is
@@ -1092,6 +1098,14 @@ private fun MenuAt(
     var within by remember { mutableStateOf(IntSize.Zero) }
     val liveMoved by rememberUpdatedState(moved)
 
+    // No cap until the screen has been measured. `heightIn(max = 0.dp)` on the first frame is a
+    // window nobody can see, and the first frame is the one where `within` is still zero.
+    val cap = if (within.height > 0) {
+        with(LocalDensity.current) { (within.height * 0.92f).toDp() }
+    } else {
+        Dp.Unspecified
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1107,26 +1121,61 @@ private fun MenuAt(
                 .then(
                     if (landscape) Modifier.width(MENU_WIDTH.dp) else Modifier.fillMaxWidth(0.94f)
                 )
-                .pointerInput(within, size) {
-                    detectDragGestures { change, dragged ->
-                        change.consume()
-                        val limitX = max(0f, (within.width - size.width) / 2f)
-                        val limitY = max(0f, (within.height - size.height) / 2f)
-                        moved = Offset(
-                            (liveMoved.x + dragged.x).coerceIn(-limitX, limitX),
-                            (liveMoved.y + dragged.y).coerceIn(-limitY, limitY),
-                        )
-                    }
-                }
                 .clickable(enabled = false, onClick = {}),
             tonalElevation = 8.dp,
             shape = MaterialTheme.shapes.large,
         ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                content = content,
-            )
+            Column {
+                // **A window is dragged by its handle, not by its body**, now that the body
+                // scrolls. Both gestures are a vertical drag, and a child scroll takes the touch
+                // before its parent — so with the drag on the whole surface, a window that could
+                // scroll could no longer be moved. One bar that only ever moves the window settles
+                // it, and settles it the same way for every window rather than per window.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pointerInput(within, size) {
+                            detectDragGestures { change, dragged ->
+                                change.consume()
+                                val limitX = max(0f, (within.width - size.width) / 2f)
+                                val limitY = max(0f, (within.height - size.height) / 2f)
+                                moved = Offset(
+                                    (liveMoved.x + dragged.x).coerceIn(-limitX, limitX),
+                                    (liveMoved.y + dragged.y).coerceIn(-limitY, limitY),
+                                )
+                            }
+                        }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(4.dp)
+                            .background(
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                MaterialTheme.shapes.small,
+                            )
+                    )
+                }
+
+                // **The whole window scrolls, and the whole window is bounded.** Not its contents:
+                // the size window had a scrolling body with a height cap, and its header, its
+                // readout and its buttons sat outside that — so adding one row pushed Apply and
+                // Cancel off a landscape screen (`BUG-54`). A cap on the contents is a cap on the
+                // wrong thing, and it fails silently the next time somebody adds a row.
+                //
+                // Here it cannot: every window goes through this container, so a window added next
+                // year inherits the bound without anybody remembering to give it one.
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = cap)
+                        .verticalScroll(scroll ?: rememberScrollState())
+                        .padding(start = 14.dp, end = 14.dp, bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    content = content,
+                )
+            }
         }
     }
 }
@@ -1242,8 +1291,13 @@ private fun ControllerLayout.mergedOver(
 private fun NowLine(element: LayoutElement, device: LayoutSurface, portrait: Boolean) {
     val p = element.placementFor(portrait)
     val unit = device.shortSide
+    // Each row says what it is, at the row. A paragraph at the top explaining that offsets run
+    // inwards from the anchor is a paragraph read once and scrolled past for ever, and it was
+    // taking three lines of a window that had run out of them.
     Text(
-        text = "now  %s\n     x %.3f  y %.3f\n     w %.3f  h %.3f   (%d × %d px)".format(
+        text = ("anchor    %s\n" +
+            "position  x %.3f   y %.3f\n" +
+            "size      w %.3f   h %.3f   (%d × %d px)").format(
             p.anchor.wireName,
             p.offsetX, p.offsetY, p.width, p.height,
             (p.width * unit).roundToInt(), (p.height * unit).roundToInt(),
@@ -1741,6 +1795,10 @@ private fun NumbersDialog(
         position = position,
         onMoved = onMoved,
         onDismiss = onDismiss,
+        // The window's own scroll, so `FEAT-59` can bring a refused value into view. It is the
+        // container's scroll now: the body had one of its own, and everything outside the body —
+        // header, readout, buttons — was what went off the bottom of a landscape screen.
+        scroll = scroll,
     ) {
         MenuHeader(title = element.id, detail = "size and position", onDismiss = onDismiss)
         // What the control is *now*, unchanged by what is being typed. The fields start as the
@@ -1751,26 +1809,21 @@ private fun NumbersDialog(
             // Two to a row and the body scrolls. Four fields stacked in a dialog on a landscape
             // phone put width and height below the fold with no way to reach them, which is a
             // feature that works and cannot be used.
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 320.dp)
-                    .verticalScroll(scroll),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = "Offsets run from the ${current.anchor.wireName} anchor to " +
-                        "the control's centre, inwards. All four are fractions of the screen's " +
-                        "shorter side.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FieldRow("position") {
                     NumberField("offsetX", offsetX, Modifier.weight(1f)) { offsetX = it }
                     NumberField("offsetY", offsetY, Modifier.weight(1f)) { offsetY = it }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FieldRow("size") {
                     NumberField("width", width, Modifier.weight(1f)) { width = it }
                     NumberField("height", height, Modifier.weight(1f)) { height = it }
                 }
+                Text(
+                    text = "Inwards from the ${current.anchor.wireName} anchor to the control's " +
+                        "centre. Fractions of the shorter side.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 // A numeric keyboard does not always offer a minus sign, and an offset is allowed
                 // to be negative. Reported on the reference device as "the keyboard only shows
                 // numbers", with pasting as the only way round it.
@@ -1849,6 +1902,18 @@ private fun NumbersDialog(
             ) { Text("Cancel") }
         }
     }
+}
+
+/** A labelled pair of fields, so a row says what it is without a paragraph above it saying so. */
+@Composable
+private fun FieldRow(label: String, fields: @Composable RowScope.() -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = FontFamily.Monospace,
+        color = MaterialTheme.colorScheme.primary,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), content = fields)
 }
 
 @Composable

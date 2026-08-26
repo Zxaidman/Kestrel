@@ -54,6 +54,15 @@ class MainActivity : ComponentActivity() {
 
     private val preview = InputPreviewState()
 
+    /**
+     * What the platform has delivered back, per control.
+     *
+     * Fed from the same two dispatch points the preview is, because it answers the same question in
+     * a form somebody can act on: not "did anything arrive" but "which controls have been proven,
+     * and how far did each axis actually go".
+     */
+    private val ground = io.github.zxaidman.kestrel.feature.testground.TestGroundState()
+
     // The notification is the only always-available way to end a session, so asking for it is
     // asking for the stop control rather than for the ability to interrupt anyone.
     private val notificationPermission =
@@ -184,6 +193,21 @@ class MainActivity : ComponentActivity() {
                             io.github.zxaidman.kestrel.core.layout.ControllerLayout?
                             >(null)
                     }
+                    var proving by androidx.compose.runtime.remember {
+                        androidx.compose.runtime.mutableStateOf(false)
+                    }
+
+                    if (proving) {
+                        // Its own page rather than a panel on the diagnostics screen. Proving a pad
+                        // means pressing every control on it, and a screen with other things to
+                        // press on it is a screen where a stray tap is indistinguishable from a
+                        // reading.
+                        io.github.zxaidman.kestrel.feature.testground.TestGroundScreen(
+                            state = ground,
+                            onClose = { proving = false },
+                        )
+                        return@Surface
+                    }
 
                     if (editing != null) {
                         // Outside the padded column on purpose. The editor's canvas is a picture of
@@ -259,6 +283,7 @@ class MainActivity : ComponentActivity() {
                                 onSave = ::saveReport,
                                 onShare = ::shareReport,
                                 onEditLayout = { editing = openLayoutForEditing() },
+                                onTestGround = { proving = true },
                             )
                         }
                     }
@@ -362,7 +387,6 @@ class MainActivity : ComponentActivity() {
             AppOrientation.REVERSE_LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
             AppOrientation.SENSOR_LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             AppOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            AppOrientation.SENSOR_PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -400,6 +424,7 @@ class MainActivity : ComponentActivity() {
     // Both call through afterwards: this screen observes and never swallows.
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         preview.record(event)
+        ground.record(event)
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -419,6 +444,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         preview.record(event)
+        ground.record(event)
         if (fromController(event)) return true
         return super.dispatchKeyEvent(event)
     }
