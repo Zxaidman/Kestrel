@@ -247,6 +247,9 @@ public object SettingsDocument {
         )
     }
 
+    /** The precision the size slider works in, so the file never carries more than it means. */
+    private fun twoDecimals(value: Double): Double = Math.round(value * 100.0) / 100.0
+
     public fun write(settings: KestrelSettings): ConfigNode {
         val stick = settings.stickProfile
         val fields = linkedMapOf<String, ConfigNode>(
@@ -254,9 +257,12 @@ public object SettingsDocument {
             "type" to ConfigNode.Text(DocumentType.SETTINGS.wireName),
             "id" to ConfigNode.Text(KestrelSettings.DOCUMENT_ID),
             "name" to ConfigNode.Text("Kestrel settings"),
-            "controlScale" to ConfigNode.Num(settings.controlScale),
+            // Written to the precision the slider offers. Belt as well as braces for `BUG-50`:
+            // the slider is fixed at its source, and this makes it impossible for float error to
+            // reach the file from a path nobody has thought of yet.
+            "controlScale" to ConfigNode.Num(twoDecimals(settings.controlScale)),
             "scaleScheme" to ConfigNode.Num(SCALE_SCHEME.toDouble()),
-            "controlScalePortrait" to ConfigNode.Num(settings.controlScalePortrait),
+            "controlScalePortrait" to ConfigNode.Num(twoDecimals(settings.controlScalePortrait)),
             "idle" to ConfigNode.Obj(
                 linkedMapOf(
                     "controlsEnabled" to ConfigNode.Bool(settings.idle.controlsEnabled),

@@ -13,6 +13,38 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.41-dev` — Float Cannot Hold Two Decimals
+
+**The size slider wrote a settings file Kestrel then refused to read.** `Float` cannot represent 1.2.
+The slider rounded in `Float` and widened the result, so its own maximum reached the file as
+`1.2000000476837158` — a hair over a ceiling of exactly 1.2. The reader refused the field and, by its
+own correct rules, the whole document. Every setting reverted to a default.
+
+This is almost certainly what the previous round recorded as a corrupt layout: the guard built then
+was aimed at layout files, and the failure was in the settings file beside them.
+
+Fixed in three places, because one is not enough. The slider rounds in `Double` and clamps. The
+reader reads a number outside a range by less than a millionth *as* that boundary — no user typed
+that difference and none can see it, and without this the file already on the phone would still not
+load. The writer rounds the scale fields so no future path can leak float error into a file.
+
+**Placements carry three decimals now, not two.** `0.0.40-dev` made the anchor arithmetic correct and
+the control still jumped. What was left was precision: two decimals of the screen's shorter side is
+10.8 px, and an anchor change has to express one point from a different origin — two origins quantise
+to two different grids, so the nearest storable value can be 5.4 px away. *"Changing the anchor does
+not move the control"* is not a promise two decimals can keep, by any arithmetic. Three decimals is
+1.1 px, and a full cycle through all eight anchors now lands within two pixels of where it began.
+
+The readouts and the numbers dialog show three decimals too, since a dialog pre-filled with `0.26`
+for a stored `0.264` moves the control the moment Apply is pressed. The offset range is scanned at
+the same precision, which was the reported "off by 0.01".
+
+**Warning.** Layout files written from now on carry three-decimal offsets. Still hand-editable,
+slightly less tidy; the shipped built-in is unchanged.
+
+**Do not** round a value in `Float` and store it in a `Double`. The error is invisible until
+something compares it to a bound.
+
 ### `0.0.40-dev` — The Size Setting, Twice More
 
 **Changing an anchor moved the control at any size but 100%.** An anchor says which edge a control

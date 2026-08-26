@@ -664,6 +664,46 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
+## Built, awaiting confirmation — `0.0.41-dev`
+
+### `BUG-50` — The slider wrote a number Kestrel refused to read
+
+`Float` cannot represent 1.2. The size slider rounded in `Float` and widened the result, so its own
+maximum reached the file as `1.2000000476837158` — a hair over a ceiling of exactly 1.2. The reader
+refused the field and, by its own correct rules, the whole document: every setting reverted to a
+default and the folder, theme and chosen layout went with them.
+
+Fixed three times over, because one place is not enough. The slider rounds in `Double` and clamps.
+The reader treats a number outside a range by less than a millionth as the boundary — without which
+**the file the project owner already has would still not load after the update**. And the writer
+rounds the two scale fields, so no future path can leak float error into the file. The stick sliders
+round the same way; none of their ends touch a bound, but the file now says what the label says.
+
+Unit tested with the reported document verbatim. Unverified on a device.
+
+---
+
+### `BUG-51` — Three decimals, because two cannot hold the promise
+
+`BUG-48` made the anchor arithmetic right and the control still moved. What was left was precision:
+an offset is a fraction of the screen's shorter side stored to two decimals, which is 10.8 px on the
+reference device. An anchor change expresses one point from a different origin, and two origins
+quantise to two different grids — so the nearest storable value can be 5.4 px from where the control
+is. Eight of those in a cycle made the hundredth the project owner measured.
+
+Offsets and sizes now carry **three** decimals — 1.1 px. The readouts and the numbers dialog show
+three too, since a dialog pre-filled with `0.26` for a stored `0.264` would move the control the
+moment Apply was pressed. The offset range is scanned at the same precision, which was the reported
+"off by 0.01".
+
+Two tests: a full cycle through all eight anchors lands within 2 px at five sizes, and the same cycle
+at two decimals does not — so the precision cannot quietly go back.
+
+**Cost.** Layout files written from now on carry three-decimal offsets. Still hand-editable. The
+shipped built-in is unchanged. Unverified on a device.
+
+---
+
 ## Built, awaiting confirmation — `0.0.40-dev`
 
 ### `BUG-48` — Changing the anchor keeps the control still, at every size

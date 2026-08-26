@@ -72,6 +72,14 @@ public object ConfigReader {
     }
 
     /** A number that must fall within a range — coordinates, opacity, rotation. */
+    /**
+     * How far outside a range a number may be and still be read as the boundary.
+     *
+     * A millionth. Small enough that nothing a person could have typed differently slips through,
+     * large enough to cover the `Float`-to-`Double` error every slider value carries.
+     */
+    public const val EDGE_TOLERANCE: Double = 1e-6
+
     public fun number(
         obj: ConfigNode.Obj,
         field: String,
@@ -82,12 +90,27 @@ public object ConfigReader {
         val at = path.child(field)
         return when (val node = obj[field]) {
             null, ConfigNode.Null -> missing(at)
-            is ConfigNode.Num ->
-                if (node.value in min..max) {
-                    Outcome.Success(node.value)
-                } else {
-                    Outcome.Failure(ConfigurationError.OutOfRange(at, node.value, min, max))
+            is ConfigNode.Num -> {
+                val found = node.value
+                when {
+                    found in min..max -> Outcome.Success(found)
+                    // Outside by less than a rounding error is at the boundary, not out of range.
+                    //
+                    // `Float` cannot represent most two-decimal values. A slider that offers 1.2 as
+                    // its maximum hands back a `Float` whose `Double` is 1.2000000476837158, and a
+                    // strict comparison refuses it — refusing the whole document over a difference
+                    // no user typed and none can see. That happened, to a settings file, and every
+                    // setting in it reverted (`BUG-50`).
+                    //
+                    // This is not a loosening of validation. A value a millionth outside a bound is
+                    // read *as* that bound, so nothing out of range ever reaches a caller; anything
+                    // a user could have meant differently is still refused, with the real limits
+                    // named.
+                    found > max && found - max <= EDGE_TOLERANCE -> Outcome.Success(max)
+                    found < min && min - found <= EDGE_TOLERANCE -> Outcome.Success(min)
+                    else -> Outcome.Failure(ConfigurationError.OutOfRange(at, found, min, max))
                 }
+            }
             else -> wrongType(at, "a number", node)
         }
     }

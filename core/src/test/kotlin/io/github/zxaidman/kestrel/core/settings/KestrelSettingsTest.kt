@@ -24,6 +24,63 @@ class KestrelSettingsTest {
 
     private fun parse(text: String) = SettingsDocument.read(value(Json.parse(text)))
 
+    // --- the file the project owner had, and why it would not load -----------------------------
+
+    /**
+     * `BUG-50`, in the exact form it was reported. `Float` cannot represent 1.2, so a slider whose
+     * maximum is 1.2 hands back a value whose `Double` is 1.2000000476837158 — and a strict bound
+     * refused it, taking every other setting in the document with it.
+     */
+    @Test
+    fun `a maximum that came back through a Float still loads`() {
+        val text = """
+            {
+              "schemaVersion": 1,
+              "type": "settings",
+              "id": "user.settings",
+              "name": "Kestrel settings",
+              "controlScale": 1.2000000476837158,
+              "scaleScheme": 2,
+              "controlScalePortrait": 1.2000000476837158,
+              "layoutId": "user.xbox"
+            }
+        """.trimIndent()
+
+        val settings = value(parse(text))
+        assertEquals(KestrelSettings.MAX_CONTROL_SCALE, settings.controlScale)
+        assertEquals(KestrelSettings.MAX_CONTROL_SCALE, settings.controlScalePortrait)
+        assertEquals("user.xbox", settings.layoutId, "the rest of the document must survive too")
+    }
+
+    /** The tolerance is a millionth, not an amnesty. A value a user could mean is still refused. */
+    @Test
+    fun `a size well past the ceiling is still refused, with the real limits named`() {
+        val text = """
+            {
+              "schemaVersion": 1,
+              "type": "settings",
+              "id": "user.settings",
+              "name": "Kestrel settings",
+              "controlScale": 1.25,
+              "scaleScheme": 2
+            }
+        """.trimIndent()
+
+        val failed = error(parse(text))
+        assertTrue(failed is ConfigurationError.OutOfRange, "got $failed")
+    }
+
+    /** Nothing float-shaped reaches the file, whichever path put the number in memory. */
+    @Test
+    fun `a scale carrying float error is written to the precision the slider offers`() {
+        val written = SettingsDocument.write(
+            KestrelSettings(controlScale = 1.2f.toDouble(), controlScalePortrait = 0.85f.toDouble())
+        )
+        val obj = written as ConfigNode.Obj
+        assertEquals(1.2, (obj["controlScale"] as ConfigNode.Num).value)
+        assertEquals(0.85, (obj["controlScalePortrait"] as ConfigNode.Num).value)
+    }
+
     // --- the round trip that makes settings survive an uninstall --------------------------------
 
     @Test

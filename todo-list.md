@@ -52,14 +52,14 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.40-dev`
+## State of the queue — build `0.0.41-dev`
 
 | Phase | Items |
 | --- | --- |
 | `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
 | `testing` | — |
-| `building` | `BUG-47`–`BUG-49`, `FEAT-59` |
+| `building` | `BUG-50`, `BUG-51` |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -795,6 +795,81 @@ value then it should auto scroll so user can see the problem."*
 The dialog body scrolls, and the message appears at the bottom of it. On a landscape phone that is
 below the fold, so Apply looked like it did nothing at all — the message was written and never seen.
 The body now scrolls to the message when one appears.
+
+---
+
+### `BUG-50` — The size slider wrote a number Kestrel then refused to read
+
+**Phase:** `building` — `0.0.41-dev`.
+**Reported with the file:** build `0.0.40-dev`. *"it actually didn't corrupt it but took value from
+slider as above 1.20, and also above 2 decimal as it should not have taken above it from slider."*
+
+```
+"controlScale": 1.2000000476837158
+```
+
+```
+settings.json could not be read, so Kestrel is running on defaults and has left the file alone:
+Field 'controlScale' is 1.2000000476837158 but must be between 0.5 and 1.2.
+```
+
+**Cause, and it is exact.** The slider works in `Float` and the settings file holds `Double`.
+`Math.round(raw * 100f) / 100f` produces the `Float` `1.2f`; **`Float` cannot represent 1.2**, so
+`1.2f.toDouble()` is `1.2000000476837158`. That is a hair *over* a maximum of exactly 1.2, and the
+reader — correctly, by its own rules — refused the field, and with it the whole document.
+
+**So the ceiling of the slider wrote a file Kestrel could not open.** Every setting reverted to a
+default and the user's arrangement, folder and theme went with them. That is the fault the project
+owner met as *"corrupt"* in `BUG-49`, in the settings file rather than the layout, and it is far more
+likely to be what happened then too.
+
+**Three fixes, because one is not enough:**
+
+1. **The slider rounds in `Double`, not in `Float`, and clamps into the range.** `1.2` written is
+   exactly `1.2`. Fixed at the source.
+2. **The reader tolerates a hair at the boundary.** A number outside a range by less than `1e-6` is
+   read as the boundary rather than refused. No user typed that difference and none can see it, and
+   any `Float` that has ever been through a slider carries one. Without this, **the file the project
+   owner already has stays unreadable after the update.**
+3. **The writer rounds the two scale fields to two decimals**, so nothing can leak float error into
+   the file from a path nobody has thought of yet.
+
+**Do not** round a value in `Float` and store it in a `Double`. The error is invisible until
+something compares it to a bound.
+
+---
+
+### `BUG-51` — Cycling the anchor drifts, a hundredth at a time
+
+**Phase:** `building` — `0.0.41-dev`.
+**Measured by the project owner**, build `0.0.40-dev`, and the numbers are the diagnosis:
+
+| scale | before | after one round trip |
+| --- | --- | --- |
+| 120% | x 0.26, y 0.67 | x 0.27, y 0.68 |
+| 115% | x 0.26 | y 0.69 |
+| 100% | — | x 0.26, y 0.69 |
+| 75% | — | x 0.27, y 0.69 |
+| 75%, again | — | x 0.28, y 0.69 |
+
+**`BUG-48` was the right fix and it is not the whole fault.** The scale arithmetic is correct now —
+what is left is precision. An offset is stored to **two decimals of the screen's shorter side**,
+which on the reference device is **10.8 px**. An anchor change has to express one point from a
+different origin, and two origins quantise to two different grids, so the nearest storable value is
+up to **half a step — 5.4 px — away**. That is the jiggle, and eight of them in a cycle compound into
+the hundredth the project owner measured. At 100% and 50% it wanders; above 100% the same wander is
+multiplied by the scale on the way to the glass, which is why it reads as a drift with a direction.
+
+**Two decimals cannot hold the promise.** *"Changing the anchor does not move the control"* is not
+achievable at that precision, at any scale, and no amount of correct arithmetic makes it so.
+
+**Fixed** by storing offsets and sizes to **three** decimals — 1.1 px on this device, below what an
+eye resolves and below what the readouts display. The editor's readouts and the numbers dialog show
+three decimals too, because a dialog that pre-fills `0.26` for a stored `0.264` moves the control the
+moment Apply is pressed.
+
+**Cost, stated.** Layout files written from now on carry three-decimal offsets. Still hand-editable,
+slightly less tidy. The shipped built-in is unchanged.
 
 ---
 
@@ -2514,6 +2589,30 @@ after a save → `BUG-49`.
 - **`BUG-49` gets a guard, not a claimed fix.** The file was deleted, so the cause is not
   established and nothing here pretends otherwise. What was built makes the parse-corruption family
   impossible and does nothing for a layout that is merely wrong.
+
+---
+
+### Round `0.0.40-dev` — the scale fixes land, and two more faults come out from under them
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1 | The round-trip guard | **Working** |
+| 2–6 | The anchor at every size | **Partly.** The arithmetic is right; the control still jiggles and a full cycle drifts about 0.01 → `BUG-51` |
+| 7, 11 | The offset range | **Working**, off by one scan step → fixed with `BUG-51` |
+| 8–10 | The message, the scroll | **Working** |
+| 12 | Corruption | **Not corruption.** The settings file was refused because the slider wrote 1.2000000476837158 → `BUG-50` |
+| 13 | Regression | None seen |
+
+### Decisions this round
+
+- **`BUG-49` is very probably `BUG-50`.** The project owner's file is the evidence the earlier round
+  did not have: the failure is a settings document refused by Kestrel's own reader, not a layout
+  that would not parse. The guard built for `BUG-49` was aimed one file to the left.
+- **Precision is a promise, not a formatting choice.** Two decimals of the shorter side is 10.8 px,
+  and *"changing the anchor does not move the control"* cannot be kept at that precision by any
+  arithmetic. Three decimals is 1.1 px. Recorded because it will come up again for sizes.
+- **A range check tolerates a millionth.** `Float` cannot hold two decimals, so any bound a slider
+  can reach is a bound a strict comparison will eventually refuse.
 
 ---
 

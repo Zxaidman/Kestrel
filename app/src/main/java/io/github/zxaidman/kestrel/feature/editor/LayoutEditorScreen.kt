@@ -1167,7 +1167,7 @@ private fun ControllerLayout.mergedOver(
 private fun LayoutElement.summary(device: LayoutSurface, portrait: Boolean): String {
     val unit = device.shortSide
     val p = placementFor(portrait)
-    return "$id  x %.2f  y %.2f  w %.2f  h %.2f   (%d × %d px)".format(
+    return "$id  x %.3f  y %.3f  w %.3f  h %.3f   (%d × %d px)".format(
         p.offsetX, p.offsetY, p.width, p.height,
         (p.width * unit).roundToInt(), (p.height * unit).roundToInt(),
     )
@@ -1262,13 +1262,20 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
     Slider(
         value = size,
         onValueChange = { raw ->
-            val snapped = Math.round(raw * 100f) / 100f
+            // Rounded in `Double` and clamped, not rounded in `Float` and widened. `Float` cannot
+            // represent 1.2: `Math.round(raw * 100f) / 100f` gives `1.2f`, and `1.2f.toDouble()` is
+            // 1.2000000476837158 — a hair over a maximum of exactly 1.2. The file was written with
+            // that number and then refused by Kestrel's own reader, taking every other setting in
+            // the document down with it (`BUG-50`).
+            val snapped = (Math.round(raw * 100f) / 100.0).coerceIn(
+                KestrelSettings.MIN_CONTROL_SCALE, KestrelSettings.MAX_CONTROL_SCALE,
+            )
             AppSettings.update {
-                if (portrait) it.copy(controlScalePortrait = snapped.toDouble())
-                else it.copy(controlScale = snapped.toDouble())
+                if (portrait) it.copy(controlScalePortrait = snapped)
+                else it.copy(controlScale = snapped)
             }
-            SessionState.controlScale.value = snapped
-            SessionState.overlay?.resize(snapped)
+            SessionState.controlScale.value = snapped.toFloat()
+            SessionState.overlay?.resize(snapped.toFloat())
         },
         onValueChangeFinished = onPersist,
         valueRange = KestrelSettings.MIN_CONTROL_SCALE.toFloat()
@@ -1311,14 +1318,18 @@ private fun PadTools(portrait: Boolean, onPersist: () -> Unit) {
 
     Spacer(modifier = Modifier.height(2.dp))
     Text("Sticks", style = MaterialTheme.typography.labelLarge)
+    // Two decimals, in `Double`, which is both what the label shows and what the file gets. A
+    // `Float` widened straight to a `Double` writes 1.2000000476837158 where the screen says 1.20 —
+    // harmless in these three, because none of their slider ends touch the reader's bounds, and
+    // exactly the fault that made a settings file unreadable in `BUG-50` where one did.
     ShapedSlider("dead zone", stick.deadzone.toFloat(), 0f..0.5f, onPersist) { v ->
-        shape { it.copy(deadzone = v.toDouble()) }
+        shape { it.copy(deadzone = sliderValue(v)) }
     }
     ShapedSlider("curve", stick.curve.toFloat(), 0.4f..3f, onPersist) { v ->
-        shape { it.copy(curve = v.toDouble()) }
+        shape { it.copy(curve = sliderValue(v)) }
     }
     ShapedSlider("sensitivity", stick.sensitivity.toFloat(), 0.5f..2.5f, onPersist) { v ->
-        shape { it.copy(sensitivity = v.toDouble()) }
+        shape { it.copy(sensitivity = sliderValue(v)) }
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1570,10 +1581,12 @@ private fun NumbersDialog(
     // a fault with the worst possible shape: dragging edited the right one and typing edited the
     // other, so the same screen did two different things depending on how you asked.
     val current = element.placementFor(portrait)
-    var offsetX by remember { mutableStateOf("%.2f".format(current.offsetX)) }
-    var offsetY by remember { mutableStateOf("%.2f".format(current.offsetY)) }
-    var width by remember { mutableStateOf("%.2f".format(current.width)) }
-    var height by remember { mutableStateOf("%.2f".format(current.height)) }
+    // Three decimals, matching what is stored. Pre-filling `0.26` for a stored `0.264` would move
+    // the control the moment Apply was pressed — a dialog that changes what it was opened to show.
+    var offsetX by remember { mutableStateOf("%.3f".format(current.offsetX)) }
+    var offsetY by remember { mutableStateOf("%.3f".format(current.offsetY)) }
+    var width by remember { mutableStateOf("%.3f".format(current.width)) }
+    var height by remember { mutableStateOf("%.3f".format(current.height)) }
     var problem by remember { mutableStateOf("") }
 
     // The body scrolls, and the message is the last thing in it. On a landscape phone that put it
@@ -1855,8 +1868,32 @@ private fun ControllerLayout.clustersOn(
     },
 )
 
-/** Two decimals, the same as the file gets, so what is on screen is what will be written. */
-private fun round(value: Double): Double = Math.round(value * 100.0) / 100.0
+/**
+ * The precision a placement is stored at: three decimals of the screen's shorter side.
+ *
+ * **Two was not enough, and the reason is arithmetic rather than taste.** Two decimals is 10.8 px on
+ * the reference device. Changing an anchor has to express one point from a different origin, and two
+ * origins quantise to two different grids — so the nearest storable value can be half a step, 5.4 px,
+ * from where the control actually is. `BUG-48` made that arithmetic correct and the control still
+ * jumped, because *"changing the anchor does not move the control"* is not a promise two decimals
+ * can keep. Eight of those in a cycle compounded into the hundredth the project owner measured
+ * (`BUG-51`).
+ *
+ * Three decimals is 1.1 px here — below what an eye resolves and below what any readout shows.
+ * Files written from now on carry three-decimal offsets; the shipped built-in is unchanged.
+ */
+private const val PLACES = 1000.0
+
+private fun round(value: Double): Double = Math.round(value * PLACES) / PLACES
+
+/**
+ * What a slider is worth once it reaches a setting: two decimals, in `Double`.
+ *
+ * A `Float` widened to a `Double` carries the error of a type that cannot hold two decimals, and
+ * that error is invisible right up until something compares it to a bound — which is how a slider
+ * at its own maximum wrote a settings file Kestrel then refused to read (`BUG-50`).
+ */
+private fun sliderValue(value: Float): Double = Math.round(value * 100f) / 100.0
 
 /**
  * What one offset is allowed to be, in words, if the control is to stay on the screen at the size
@@ -1865,7 +1902,10 @@ private fun round(value: Double): Double = Math.round(value * 100.0) / 100.0
  * Scanned rather than solved. The offset-to-pixels relation depends on the anchor and on the
  * shape's own squaring-up, and a formula that has to agree with `resolve` and `shapedAs` is a
  * second copy of both that will drift from them. It runs only after a value has been refused, so
- * eight hundred cheap probes cost nothing anybody can feel.
+ * eight thousand cheap probes cost nothing anybody can feel.
+ *
+ * Stepped at the precision a placement is stored at. Stepping coarser than that understates the
+ * limit by up to one step — reported as *"calculation is off by 0.01"*, which it was.
  *
  * The two axes are independent: `isWithin` checks left/right against one pair of edges and
  * top/bottom against the other, so a bad offsetY cannot make the offsetX range come out wrong.
@@ -1881,9 +1921,10 @@ private fun offsetLimit(
     var low: Double? = null
     var high: Double? = null
     var steps = 0
-    val total = (2 * Placement.MAX_OFFSET / 0.01).toInt()
+    val step = 1.0 / PLACES
+    val total = (2 * Placement.MAX_OFFSET / step).toInt()
     while (steps <= total) {
-        val value = round(-Placement.MAX_OFFSET + steps * 0.01)
+        val value = round(-Placement.MAX_OFFSET + steps * step)
         val rect = (
             if (horizontal) wanted.copy(offsetX = value) else wanted.copy(offsetY = value)
             ).scaledBy(scale).resolve(device).shapedAs(shape)
@@ -1901,7 +1942,7 @@ private fun offsetLimit(
     return if (low == null || high == null) {
         "$name has no value that fits — the control is too big for the screen this way"
     } else {
-        "$name has to be between $low and $high"
+        "$name has to be between %.3f and %.3f".format(low, high)
     }
 }
 

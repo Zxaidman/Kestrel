@@ -73,6 +73,51 @@ class ReAnchoringTest {
         )
     }
 
+    /**
+     * `BUG-51`. The arithmetic being right is not enough — a stored offset has a precision, and an
+     * anchor change has to express one point from a different origin. This is the check that says
+     * three decimals can hold the promise and two cannot.
+     */
+    @Test
+    fun `a full cycle through every anchor lands within a pixel, at three decimals`() {
+        val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.264, offsetY = 0.671, size = 0.12)
+
+        for (scale in listOf(0.5, 0.75, 1.0, 1.15, 1.2)) {
+            val was = start.scaledBy(scale).resolve(WIDE)
+            var walking = start
+            for (anchor in everyAnchor + Anchor.BOTTOM_LEFT) {
+                walking = walking.reAnchored(WIDE, anchor, scale).roundedTo(1000.0)
+            }
+            val now = walking.scaledBy(scale).resolve(WIDE)
+            assertEquals(was.centerX, now.centerX, 2.0, "x drifted over a full cycle at $scale")
+            assertEquals(was.centerY, now.centerY, 2.0, "y drifted over a full cycle at $scale")
+        }
+    }
+
+    /** The same cycle at two decimals, which is what the project owner measured drifting. */
+    @Test
+    fun `a full cycle at two decimals drifts far enough to see`() {
+        val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.264, offsetY = 0.671, size = 0.12)
+        val scale = 1.2
+
+        val was = start.scaledBy(scale).resolve(WIDE)
+        var walking = start
+        for (anchor in everyAnchor + Anchor.BOTTOM_LEFT) {
+            walking = walking.reAnchored(WIDE, anchor, scale).roundedTo(100.0)
+        }
+        val now = walking.scaledBy(scale).resolve(WIDE)
+        assertTrue(
+            kotlin.math.abs(was.centerX - now.centerX) > 2.0 ||
+                kotlin.math.abs(was.centerY - now.centerY) > 2.0,
+            "two decimals should drift, which is why the precision changed",
+        )
+    }
+
+    private fun Placement.roundedTo(places: Double) = copy(
+        offsetX = Math.round(offsetX * places) / places,
+        offsetY = Math.round(offsetY * places) / places,
+    )
+
     @Test
     fun `a scale of zero leaves the placement alone rather than dividing by it`() {
         val start = placement(Anchor.BOTTOM_LEFT, offsetX = 0.30, offsetY = 0.22)
