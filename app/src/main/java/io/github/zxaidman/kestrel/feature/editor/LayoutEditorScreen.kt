@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -194,6 +195,10 @@ public fun LayoutEditorScreen(
     var toolsOpen by remember { mutableStateOf(false) }
     var leaving by remember { mutableStateOf(false) }
     var menuFor by remember(layout.header.id) { mutableStateOf<String?>(null) }
+    // The menu a child window is standing in front of. Two windows stacked on a phone leave
+    // neither readable, so the parent steps aside — and stepping aside has to be reversible or it
+    // is just closing with extra steps.
+    var menuParked by remember(layout.header.id) { mutableStateOf<String?>(null) }
     var copied by remember { mutableStateOf<ControlStyle?>(null) }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     // The buttons and their captions are one block that can be dragged anywhere and put out of the
@@ -314,10 +319,21 @@ public fun LayoutEditorScreen(
             },
         )
 
+        // The buttons step aside while any window is open, and come back when the last one
+        // closes. They are the only thing on the canvas that is not the pad, so with a menu up they
+        // are the only thing left to be in the way of it.
+        //
+        // Derived from what is open rather than tracked by a flag. A flag would have to be cleared
+        // on every path out of every window, and the one that gets missed leaves Save and Exit
+        // invisible with nothing on screen to explain why.
+        val windowOpen = menuFor != null || typingNumbers || toolsOpen
+
         // The middle of the screen, which is the one place a pad never is: controls belong to the
         // corners and edges a thumb reaches, and the centre is what a game is played through.
         // Anywhere else and these would sit on top of the thing being arranged.
-        if (panelHidden) {
+        if (windowOpen) {
+            // Nothing. The window on screen is what the user is looking at.
+        } else if (panelHidden) {
             // Minimised: one button, draggable like the block was, and a tap brings the block back
             // to the middle at full size. Fading it to a fifth and leaving it in place solved the
             // wrong problem — it was still there to be caught by a thumb, and it was still on top
@@ -507,6 +523,7 @@ public fun LayoutEditorScreen(
                 landscape = !portrait,
                 copied = copied,
                 onSize = {
+                    menuParked = menuFor
                     menuFor = null
                     typingNumbers = true
                 },
@@ -538,6 +555,32 @@ public fun LayoutEditorScreen(
                     menuFor = null
                 },
                 onDismiss = { menuFor = null },
+            )
+        }
+
+        // Inside the canvas rather than in a dialog window of its own, because it is dragged and
+        // clamped by the same container the long-press menu uses — a window that opens in the
+        // middle and cannot be moved is a window on top of whatever is being edited.
+        //
+        // Closing it puts the menu it came from back, where it was. Sending the user to a bare
+        // canvas after they typed a number is losing their place for no reason.
+        if (typingNumbers && selected != null && !toolsOpen) {
+            fun done() {
+                typingNumbers = false
+                menuFor = menuParked
+                menuParked = null
+            }
+            NumbersDialog(
+                element = selected,
+                device = device,
+                controlScale = controlScale,
+                landscape = !portrait,
+                portrait = portrait,
+                onDismiss = { done() },
+                onApply = { updated ->
+                    working = working.replacing(updated)
+                    done()
+                },
             )
         }
 
@@ -588,20 +631,6 @@ public fun LayoutEditorScreen(
                 )
             }
         }
-    }
-
-    if (typingNumbers && selected != null) {
-        NumbersDialog(
-            element = selected,
-            device = device,
-            controlScale = controlScale,
-            portrait = portrait,
-            onDismiss = { typingNumbers = false },
-            onApply = { updated ->
-                working = working.replacing(updated)
-                typingNumbers = false
-            },
-        )
     }
 
     if (leaving) {
@@ -1167,7 +1196,7 @@ private fun ControllerLayout.mergedOver(
 private fun LayoutElement.summary(device: LayoutSurface, portrait: Boolean): String {
     val unit = device.shortSide
     val p = placementFor(portrait)
-    return "$id  x %.3f  y %.3f  w %.3f  h %.3f   (%d × %d px)".format(
+    return "$id  x %.4f  y %.4f  w %.4f  h %.4f   (%d × %d px)".format(
         p.offsetX, p.offsetY, p.width, p.height,
         (p.width * unit).roundToInt(), (p.height * unit).roundToInt(),
     )
@@ -1573,6 +1602,7 @@ private fun NumbersDialog(
     element: LayoutElement,
     device: LayoutSurface,
     controlScale: Float,
+    landscape: Boolean,
     portrait: Boolean,
     onDismiss: () -> Unit,
     onApply: (LayoutElement) -> Unit,
@@ -1583,10 +1613,10 @@ private fun NumbersDialog(
     val current = element.placementFor(portrait)
     // Three decimals, matching what is stored. Pre-filling `0.26` for a stored `0.264` would move
     // the control the moment Apply was pressed — a dialog that changes what it was opened to show.
-    var offsetX by remember { mutableStateOf("%.3f".format(current.offsetX)) }
-    var offsetY by remember { mutableStateOf("%.3f".format(current.offsetY)) }
-    var width by remember { mutableStateOf("%.3f".format(current.width)) }
-    var height by remember { mutableStateOf("%.3f".format(current.height)) }
+    var offsetX by remember { mutableStateOf("%.4f".format(current.offsetX)) }
+    var offsetY by remember { mutableStateOf("%.4f".format(current.offsetY)) }
+    var width by remember { mutableStateOf("%.4f".format(current.width)) }
+    var height by remember { mutableStateOf("%.4f".format(current.height)) }
     var problem by remember { mutableStateOf("") }
 
     // The body scrolls, and the message is the last thing in it. On a landscape phone that put it
@@ -1602,15 +1632,16 @@ private fun NumbersDialog(
     // This did not, and it offered numbers it had checked on a screen nobody was looking at.
     val scale = controlScale.toDouble().coerceAtLeast(0.01)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(element.id) },
-        text = {
+    MenuAt(landscape = landscape, onDismiss = onDismiss) {
+        MenuHeader(title = element.id, detail = "size and position", onDismiss = onDismiss)
+        run {
             // Two to a row and the body scrolls. Four fields stacked in a dialog on a landscape
             // phone put width and height below the fold with no way to reach them, which is a
             // feature that works and cannot be used.
             Column(
-                modifier = Modifier.verticalScroll(scroll),
+                modifier = Modifier
+                    .heightIn(max = 320.dp)
+                    .verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
@@ -1643,8 +1674,9 @@ private fun NumbersDialog(
                     )
                 }
             }
-        },
-        confirmButton = {
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             KButton(onClick = {
                 val numbers = listOf(offsetX, offsetY, width, height).map { it.trim().toDoubleOrNull() }
                 if (numbers.any { it == null }) {
@@ -1697,10 +1729,13 @@ private fun NumbersDialog(
                     is Outcome.Success ->
                         onApply(element.withPlacementFor(portrait, candidate.value))
                 }
-            }) { Text("Apply") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+            }, modifier = Modifier.weight(1f)) { Text("Apply") }
+            KOutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
+            ) { Text("Cancel") }
+        }
+    }
 }
 
 @Composable
@@ -1869,20 +1904,30 @@ private fun ControllerLayout.clustersOn(
 )
 
 /**
- * The precision a placement is stored at: three decimals of the screen's shorter side.
+ * The precision a placement is stored at: four decimals of the screen's shorter side.
  *
- * **Two was not enough, and the reason is arithmetic rather than taste.** Two decimals is 10.8 px on
- * the reference device. Changing an anchor has to express one point from a different origin, and two
- * origins quantise to two different grids — so the nearest storable value can be half a step, 5.4 px,
- * from where the control actually is. `BUG-48` made that arithmetic correct and the control still
- * jumped, because *"changing the anchor does not move the control"* is not a promise two decimals
- * can keep. Eight of those in a cycle compounded into the hundredth the project owner measured
- * (`BUG-51`).
+ * **This took three goes, and each one is a lesson worth keeping.**
  *
- * Three decimals is 1.1 px here — below what an eye resolves and below what any readout shows.
- * Files written from now on carry three-decimal offsets; the shipped built-in is unchanged.
+ * Two decimals is 10.8 px on the reference device. Changing an anchor has to express one point from
+ * a different origin, and two origins quantise to two different grids — so the nearest storable
+ * value can be half a step, 5.4 px, from where the control actually is. `BUG-48` made that
+ * arithmetic correct and the control still jumped, because *"changing the anchor does not move the
+ * control"* is not a promise two decimals can keep.
+ *
+ * Three decimals is 1.1 px, which is below what an eye resolves — and that was the wrong test.
+ * The value is fed back into its own next computation, so eight anchor changes in a cycle
+ * accumulated into one whole storable step and repeating the cycle walked the number 0.260, 0.261,
+ * 0.262 (`BUG-52`). Invisible per step is not the same as stable.
+ *
+ * **The test for a value that re-enters its own computation is whether the error can accumulate
+ * past one storable step**, not whether one step can be seen. Four decimals is 0.11 px here, so a
+ * full cycle cannot reach even one step. Used everywhere — the file, the readouts, the numbers
+ * dialog, and the scan that reports an offset range.
  */
-private const val PLACES = 1000.0
+private const val PLACES = 10000.0
+
+/** Decimal places in the file, matching [PLACES]. `FEAT-60` writes every placement to exactly this. */
+internal const val PLACEMENT_DECIMALS: Int = 4
 
 private fun round(value: Double): Double = Math.round(value * PLACES) / PLACES
 
@@ -1902,7 +1947,7 @@ private fun sliderValue(value: Float): Double = Math.round(value * 100f) / 100.0
  * Scanned rather than solved. The offset-to-pixels relation depends on the anchor and on the
  * shape's own squaring-up, and a formula that has to agree with `resolve` and `shapedAs` is a
  * second copy of both that will drift from them. It runs only after a value has been refused, so
- * eight thousand cheap probes cost nothing anybody can feel.
+ * eighty thousand cheap probes cost a few milliseconds nobody can feel.
  *
  * Stepped at the precision a placement is stored at. Stepping coarser than that understates the
  * limit by up to one step — reported as *"calculation is off by 0.01"*, which it was.
@@ -1942,7 +1987,7 @@ private fun offsetLimit(
     return if (low == null || high == null) {
         "$name has no value that fits — the control is too big for the screen this way"
     } else {
-        "$name has to be between %.3f and %.3f".format(low, high)
+        "$name has to be between %.4f and %.4f".format(low, high)
     }
 }
 

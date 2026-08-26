@@ -210,7 +210,7 @@ public object Json {
         when (node) {
             is ConfigNode.Null -> out.append("null")
             is ConfigNode.Bool -> out.append(if (node.value) "true" else "false")
-            is ConfigNode.Num -> out.append(number(node.value))
+            is ConfigNode.Num -> out.append(number(node.value, node.decimals))
             is ConfigNode.Text -> escape(node.value, out)
 
             is ConfigNode.Arr -> if (node.items.isEmpty()) {
@@ -261,8 +261,15 @@ public object Json {
      * them is special. Anything not finite is refused rather than written: JSON has no `NaN`, and
      * writing one would produce a file this reader would reject.
      */
-    private fun number(value: Double): String {
+    private fun number(value: Double, decimals: Int? = null): String {
         require(value.isFinite()) { "a document cannot hold $value" }
+        // Asked for a fixed width, and given one — trailing zeros included, which is the whole
+        // point. `Locale.ROOT` because a document is not written in anybody's language: a comma
+        // for a decimal point would produce JSON that no reader on earth accepts, and the phone
+        // decides the default locale.
+        if (decimals != null) {
+            return String.format(java.util.Locale.ROOT, "%.${decimals}f", value)
+        }
         return if (value == value.toLong().toDouble() && kotlin.math.abs(value) < 1e15) {
             value.toLong().toString()
         } else {

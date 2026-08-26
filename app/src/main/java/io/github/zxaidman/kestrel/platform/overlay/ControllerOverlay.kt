@@ -1181,7 +1181,12 @@ private class ClusterView(
                 val current = level[control.id] ?: 0f
                 if (current == target) return@forEach
                 val next = if (target > current) {
-                    min(target, current + seconds / RISE_SECONDS)
+                    // Two rates on the way up. The first half arrives in a tenth of a second, so
+                    // the press *registers* almost at once; the second half travels at the original
+                    // rate, so a full pull still takes a moment and still feels like a trigger
+                    // rather than a switch.
+                    val rate = if (current < HALF) HALF / QUICK_SECONDS else 1f / RISE_SECONDS
+                    min(target, current + seconds * rate)
                 } else {
                     max(target, current - seconds / FALL_SECONDS)
                 }
@@ -1223,8 +1228,22 @@ private class ClusterView(
          *
          * Release is quicker than press on purpose: a control that lingers after the thumb has gone
          * feels broken, while one that takes a moment to reach full feels like a trigger.
+         *
+         * **The press is two rates, and that is the project owner's own proposal** (`BUG-8`). A
+         * single 0.5s ramp was chosen for a measured reason and it made the press slow to
+         * *register*, which is a different complaint from how it feels. So the first half arrives
+         * in [QUICK_SECONDS] and the rest at the original rate: **0.35s to full**, which is also
+         * the number this was going to fall back to if the two-rate shape felt wrong.
+         *
+         * The only real risk was a target that treats the axis as a switch above a threshold, and
+         * for one of those this is *more* responsive rather than less.
+         *
+         * **Do not** turn this back into a step per frame. That gave 0.31s on a 120Hz panel and
+         * 0.5s on a 60Hz one — the ramp is measured in time, not in frames.
          */
         const val RISE_SECONDS = 0.50f
         const val FALL_SECONDS = 0.30f
+        const val QUICK_SECONDS = 0.10f
+        const val HALF = 0.5f
     }
 }

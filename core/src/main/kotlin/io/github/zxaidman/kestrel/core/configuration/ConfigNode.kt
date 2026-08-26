@@ -21,7 +21,23 @@ public sealed interface ConfigNode {
      * Any JSON number. Kept as a `Double` because that is what JSON guarantees; callers that need a
      * whole number ask for one and get a typed error if it is not.
      */
-    public data class Num(public val value: Double) : ConfigNode
+    /**
+     * A number, and optionally how many decimal places it should be *written* with.
+     *
+     * [decimals] is a hint for the writer and nothing else. It takes no part in reading, in
+     * validation, or in what the number means — two `Num`s with the same value and different hints
+     * are different objects but the same number, and every caller that compares values should
+     * compare [value].
+     *
+     * It exists because the project owner hand-edits layout files, and a column where one line
+     * reads `0.1` and the next `0.2637` cannot be scanned by eye. Placements are written to a fixed
+     * width; a `Num` with no hint is written exactly as it always was, so no other document changes
+     * shape (`FEAT-60`).
+     */
+    public data class Num(
+        public val value: Double,
+        public val decimals: Int? = null,
+    ) : ConfigNode
 
     public data class Bool(public val value: Boolean) : ConfigNode
 

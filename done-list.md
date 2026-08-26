@@ -664,6 +664,66 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
+## Built, awaiting confirmation — `0.0.42-dev`
+
+### `BUG-52` — Four decimals, and the writer was the reason three never arrived
+
+Three decimals stopped the jiggle and left the walk: 1.1 px per anchor change compounds over a cycle
+of eight into one whole storable step, so repeating the cycle moved the number 0.260, 0.261, 0.262.
+Below 105% it rounded back; above, the same wander is multiplied on the way to the glass.
+
+Four decimals — 0.11 px on the reference device — puts a full cycle below one step. Everywhere: the
+stored value, the readouts, the numbers dialog, and the scan that reports an offset range.
+
+**And the reason three decimals never showed up in a file:** `ControllerLayoutWriter` had been
+rounding placements to two since long before any of this, so the editor held three and the writer
+threw one away on the way out. A fix is not shipped until the value survives the write.
+
+**The lesson.** *"Too small to see"* is the wrong test for a number that is fed back into its own
+next computation. The test is whether the error can accumulate past one storable step.
+
+Unit tested. Unverified on a device.
+
+---
+
+### `FEAT-60` — A layout file keeps its decimal places
+
+Placements are written to a fixed four decimals — `0.1000`, `0.2600`, `0.2637` — so a hand-editor can
+scan the column. `ConfigNode.Num` gained an optional `decimals` hint that only the writer reads and
+only the layout writer sets, so `schemaVersion` stays `1` and no other document changes shape.
+Formatted in `Locale.ROOT`, because a comma for a decimal point would produce JSON no reader accepts
+and the phone chooses the default locale. Rotation is left alone: it is an angle in degrees, and
+`0.0000` is noise rather than alignment. Unit tested. Unverified on a device.
+
+---
+
+### `FEAT-61` — Windows move, and get out of each other's way
+
+The size dialog was an `AlertDialog` pinned to the middle of the screen — which is the one place a
+pad never is, until a control is dragged there. It now uses the same container the long-press menu
+does, so it drags and clamps identically, and anything added later inherits both.
+
+Opening it parks the control menu and closing it puts the menu back where it was, rather than
+dropping the user on a bare canvas after they typed a number. The floating buttons hide while any
+window is open and return when the last one closes — derived from what is open rather than tracked
+by a flag, so there is no path that can leave Save and Exit invisible.
+
+Unverified.
+
+---
+
+### `BUG-8` — A trigger registers at once and still travels
+
+The project owner's own proposal: the first half fills in 0.10s and the rest at the original rate,
+so **0.35s to full** — which is also the number this was going to fall back to if the two-rate shape
+felt wrong. Release is unchanged at 0.30s.
+
+**The setting is deliberately not in this build.** Making it adjustable needs a schema version bump,
+a migration, a `docs/CONFIGURATION_SCHEMA.md` update and a control, and none of that is worth doing
+before a hand has felt the shape. Unverified.
+
+---
+
 ## Built, awaiting confirmation — `0.0.41-dev`
 
 ### `BUG-50` — The slider wrote a number Kestrel refused to read

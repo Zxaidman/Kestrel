@@ -52,14 +52,14 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.41-dev`
+## State of the queue — build `0.0.42-dev`
 
 | Phase | Items |
 | --- | --- |
 | `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
 | `testing` | — |
-| `building` | `BUG-50`, `BUG-51` |
+| `building` | `BUG-8`, `BUG-52`, `FEAT-60`, `FEAT-61` |
 | `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -873,6 +873,73 @@ slightly less tidy. The shipped built-in is unchanged.
 
 ---
 
+### `BUG-52` — Three decimals was better and still not enough
+
+**Phase:** `building` — `0.0.41-dev` → four decimals in `0.0.42-dev`.
+**Measured by the project owner**, build `0.0.41-dev`: *"working with changes below 105% but moving
+by `0.001` above 105% each round trip from 0.260 > 0.261 > 0.262. with no visible jiggling."*
+
+`BUG-51` moved the jiggle below what an eye can see and left the accumulation. One thousandth of the
+shorter side is 1.1 px; a full cycle through eight anchors compounds that into one storable step, and
+repeating the cycle walks the number one step at a time. Below 105% it rounds back to where it was;
+above, the same wander is multiplied on the way to the glass and lands over the boundary.
+
+**The project owner authorised the fix in the same breath:** *"if using `0.000` upto 3 decimal or
+`0.0000` can increase the precision then you are free to use it app wide even inside the .json file
+also."*
+
+**Four decimals.** 0.11 px on the reference device — a tenth of a pixel, so a full cycle cannot reach
+even one storable step, let alone a visible one. App-wide: the stored value, the readouts, the
+numbers dialog, and the scan that reports an offset range.
+
+**The lesson, and it is the third time round on this one.** *"Close enough not to see"* is not the
+test for a value that is fed back into its own next computation. The test is whether the error can
+accumulate past one storable step, and at three decimals it could.
+
+---
+
+### `FEAT-60` — A layout file keeps its decimal places
+
+**Phase:** `building` — `0.0.42-dev`.
+**Asked for:** build `0.0.41-dev`, point 13. *"my existing one layout json is still 1 or 2 decimals
+for example if 0.1 is saved them .json should show 0.100 instead of trailing it. so it maintains
+decimal consistency."*
+
+The writer prints the shortest form of a number, so a placement reads `0.1`, `0.26`, `0.2637` in the
+same column. The project owner hand-edits these files, and a column that changes width from line to
+line is one that cannot be scanned by eye.
+
+Placement numbers are written to a **fixed four decimals**: `0.1000`, `0.2600`, `0.2637`. Only
+placements — `schemaVersion` stays `1`, not `1.0000`, and every other number keeps its natural form.
+
+**How, without making the whole writer lie.** `ConfigNode.Num` gains an optional `decimals` hint that
+only the writer reads and only the layout writer sets. A number with no hint is written exactly as
+it is written today, so no other document changes shape.
+
+---
+
+### `FEAT-61` — Every window is draggable, and a parent steps aside for its child
+
+**Phase:** `building` — `0.0.42-dev`.
+**Asked for:** build `0.0.41-dev`. *"make any current popup windows or future window draggable just
+like gamepad dialog menu… and if new window is open hide it's parent window temporary once child
+window closed reopen it. same should be apply for floating button when gamepad dialog window is
+open."*
+
+Three rules, one shape:
+
+1. **Draggable.** The long-press menu already is. The size dialog was an `AlertDialog`, pinned to the
+   middle — which is the one place a pad never is, until a control is dragged there. It now uses the
+   same container the menu does, so it drags and clamps identically. Anything added later uses that
+   container and inherits both.
+2. **A parent steps aside.** Opening the size dialog hides the control menu; closing it brings the
+   menu back where it was, rather than dropping the user on the canvas with the menu gone.
+3. **The buttons go too.** The floating block is hidden while any window is open and returns when the
+   last one closes. Derived from what is open rather than tracked by a flag — one fewer thing that
+   can be left in the wrong state.
+
+---
+
 ## 2. Errors and bugs
 
 ### `BUG-1` — The overlay does not draw into the cutout area
@@ -1003,7 +1070,18 @@ control affected.
 
 ### `BUG-8` — A trigger takes too long to register
 
-**Phase:** `pending`
+**Phase:** `building` — `0.0.42-dev`, the ramp only. **The configurable field is deliberately not in
+this build**, and the reason is that it needs a schema version bump, a migration, a
+`docs/CONFIGURATION_SCHEMA.md` update and a settings control — a round of its own, and none of it is
+worth doing before the shape has been felt by a hand. The number the project owner is hitting is
+fixed now; making it adjustable follows the confirmation, not the other way round.
+
+**Built.** The project owner's own proposal: the first half fills fast, the second half at the
+original rate. 0.10s to halfway and 0.25s from there — **0.35s to full**, which is also the fallback
+this entry recorded in case the two-rate shape felt wrong. Release is unchanged at 0.30s.
+
+**Do not** reintroduce a per-frame step. The ramp is measured in time, and a fixed step per frame
+gave 0.31s on a 120Hz panel and 0.5s on a 60Hz one.
 
 **Found by:** Reported, build `0.0.25-dev`.
 
@@ -2613,6 +2691,34 @@ after a save → `BUG-49`.
   arithmetic. Three decimals is 1.1 px. Recorded because it will come up again for sizes.
 - **A range check tolerates a millionth.** `Float` cannot hold two decimals, so any bound a slider
   can reach is a bound a strict comparison will eventually refuse.
+
+---
+
+### Round `0.0.41-dev` — the settings file loads, and precision needs one more digit
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1–6 | The settings file, the slider, the written value | **Working**. The reported file loads |
+| 7–9 | The anchor | **No visible jiggle**, and still walking 0.001 a cycle above 105% → `BUG-52` |
+| 10–12 | The dialog | **Working** |
+| 13 | The layout file | Still two decimals → the writer was rounding to two all along → `BUG-52` and `FEAT-60` |
+| 14 | Regression | None seen |
+
+**Also asked for:** every window draggable, a parent hidden while its child is open, and the buttons
+out of the way with a window up → `FEAT-61`.
+
+### Decisions this round
+
+- **Four decimals, app-wide, in the file too.** The project owner authorised the precision outright.
+- **`BUG-51`'s three decimals never reached a file.** The layout writer had been rounding to two
+  since long before, so the editor held three and the writer discarded one on the way out. **A fix
+  is not shipped until the value survives the write** — checking it in memory was checking half the
+  path.
+- **The test for an accumulating value is not "can one step be seen".** It is whether the error can
+  compound past one storable step. Three decimals passed the first test and failed the second.
+- **`BUG-8` ships the ramp and not the setting.** A schema bump, a migration, a schema-document
+  update and a control is a round of its own, and none of it is worth doing before a hand has felt
+  the shape.
 
 ---
 

@@ -520,7 +520,36 @@ public object ControllerLayoutWriter {
      * fraction of the short side is about a pixel on a 1080-wide screen — finer than anyone can
      * place a control with a thumb, and far finer than anyone can see.
      */
+    /**
+     * Decimal places every placement is written with — rounded to, and padded to.
+     *
+     * **Four, and both halves of that matter.**
+     *
+     * Rounded to four because an offset re-enters its own next computation: changing an anchor
+     * expresses one point from a different origin, so the stored value is measured, re-derived and
+     * stored again. At two decimals — 10.8 px on the reference device — the control jumped
+     * (`BUG-48`, `BUG-51`); at three it stopped jumping and started *walking*, one thousandth per
+     * cycle (`BUG-52`). Four is 0.11 px, where a full cycle cannot reach one storable step.
+     *
+     * This writer was rounding to two, which is why three decimals never reached a file at all —
+     * the editor held them and the writer threw them away on the way out.
+     *
+     * Padded to four because the project owner hand-edits these files, and a column where one line
+     * reads `0.1` and the next `0.2637` cannot be scanned by eye (`FEAT-60`). `0.1` is written
+     * `0.1000`.
+     *
+     * Rotation is left out of both: it is an angle in degrees, on a different scale from the four
+     * fractions, and `0.0000` degrees is noise rather than alignment.
+     */
+    private const val PLACEMENT_DECIMALS = 4
+    private const val PLACEMENT_PLACES = 10_000.0
+
     private fun round(value: Double): Double = Math.round(value * 100.0) / 100.0
+
+    private fun fraction(value: Double): ConfigNode.Num = ConfigNode.Num(
+        value = Math.round(value * PLACEMENT_PLACES) / PLACEMENT_PLACES,
+        decimals = PLACEMENT_DECIMALS,
+    )
 
     private fun element(element: LayoutElement): ConfigNode {
         val fields = LinkedHashMap<String, ConfigNode>()
@@ -562,10 +591,10 @@ public object ControllerLayoutWriter {
     private fun placementFields(placement: Placement): LinkedHashMap<String, ConfigNode> =
         linkedMapOf(
             "anchor" to ConfigNode.Text(placement.anchor.wireName),
-            "offsetX" to ConfigNode.Num(round(placement.offsetX)),
-            "offsetY" to ConfigNode.Num(round(placement.offsetY)),
-            "width" to ConfigNode.Num(round(placement.width)),
-            "height" to ConfigNode.Num(round(placement.height)),
+            "offsetX" to fraction(placement.offsetX),
+            "offsetY" to fraction(placement.offsetY),
+            "width" to fraction(placement.width),
+            "height" to fraction(placement.height),
             "rotation" to ConfigNode.Num(round(placement.rotationDegrees)),
         )
 }

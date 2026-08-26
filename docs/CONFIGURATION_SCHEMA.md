@@ -190,6 +190,26 @@ So the two are normalised differently, on purpose:
 Both are in the same unit, so a control and its offsets scale together and an arrangement holds its
 proportions.
 
+### Precision
+
+Placement numbers are written to **four decimal places, padded** — `0.1` is written `0.1000`. Two
+things ride on that.
+
+**Four**, because an offset re-enters its own next computation. Changing a control's anchor means
+expressing one point from a different origin: the value is measured, re-derived and stored again. On
+a 1080-pixel short side, two decimals is 10.8 px and the control visibly jumped; three is 1.1 px and
+it stopped jumping and started *walking*, a thousandth per cycle of the eight anchors. Four is
+0.11 px, where a full cycle cannot compound past one storable step.
+
+The rule that came out of it: for a value that is fed back into its own next computation, the test is
+not whether one step can be seen — it is whether the error can accumulate past one storable step.
+
+**Padded**, because these files are hand-edited, and a column where one line reads `0.1` and the next
+`0.2637` cannot be scanned by eye.
+
+A reader must accept any number of decimals; this is how Kestrel *writes*, not what it requires.
+Rotation is exempt — it is an angle in degrees, on a different scale from the four fractions.
+
 ### Insets
 
 The usable surface excludes display cutouts and gesture areas. Those are device-specific, which is

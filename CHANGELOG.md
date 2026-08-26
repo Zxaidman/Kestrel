@@ -13,6 +13,35 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.42-dev` — Four Decimals, And Windows That Move
+
+**Three decimals stopped the jiggle and left the walk.** 1.1 px per anchor change compounds over a
+cycle of eight into one whole storable step, so repeating the cycle moved an offset 0.260, 0.261,
+0.262. Placements carry **four** decimals now — 0.11 px — where a full cycle cannot reach one step.
+
+**And three decimals had never reached a file.** `ControllerLayoutWriter` was rounding placements to
+two, and had been since long before any of this, so the editor held three and the writer discarded
+one on the way out. A fix is not shipped until the value survives the write.
+
+*"Too small to see"* is the wrong test for a number fed back into its own next computation. The test
+is whether the error can accumulate past one storable step.
+
+**A layout file keeps its decimal places.** `0.1` is written `0.1000`, so a hand-editor can scan the
+column. `ConfigNode.Num` gained a writer-only `decimals` hint that only the layout writer sets —
+`schemaVersion` stays `1`, and no other document changes shape.
+
+**Windows move, and get out of each other's way.** The size dialog uses the same draggable, clamped
+container the long-press menu does instead of sitting pinned in the middle of the canvas. Opening it
+parks the menu it came from and closing it puts that menu back. The floating buttons hide while any
+window is open and return when the last one closes.
+
+**A trigger registers at once and still travels.** The first half of the pull fills in 0.10s and the
+rest at the original rate — 0.35s to full, against 0.50s before. Release is unchanged.
+
+**Warning.** The trigger ramp is **not configurable in this build**, deliberately: a field for it
+needs a schema version bump, a migration, a schema-document update and a control, and none of that is
+worth doing before a hand has felt the shape. Everything here is unverified on a device.
+
 ### `0.0.41-dev` — Float Cannot Hold Two Decimals
 
 **The size slider wrote a settings file Kestrel then refused to read.** `Float` cannot represent 1.2.
