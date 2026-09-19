@@ -13,6 +13,33 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `main` catches up — `0.0.44-dev` merged
+
+`main` had been left at the state before the editor work began, ninety-seven commits behind, on a
+plan that said it would not move until `v0.1.0`. At the project owner's request it now carries
+`0.0.44-dev` so testing happens from the default branch.
+
+**This is not a release, and nothing about it should be read as one.** The build is debug-signed,
+the version is below `0.1.0`, and `CRIT-1` — a release signing key that is not committed to this
+repository — is open. A debug-signed build installs over a user's Kestrel and inherits their
+permissions, which is exactly why it must not be published as a release.
+
+**The documentation was wrong and has been corrected.** `CLAUDE.md` §1 — the brief every AI agent
+reads first — still said *"no product behaviour exists yet"*, described `:core` as holding a single file, and denied the existence of `feature/`,
+`platform/`, the overlay, the session, CI and the configuration implementation. All of that had been
+true and none of it was any longer. `README.md` still described the project as pre-feasibility.
+
+`docs/PROJECT_STATE.md` is new and is **canonical** for where the project is: the real phase
+position, what is `Tested` against what is `Unverified`, and the limits. `CLAUDE.md` §1 and
+`README.md` summarise it and say so, under the same single-source rule that governs folder
+placement — so the next drift is one file to fix rather than three.
+
+**What it records, and the part worth reading twice:** the phases in `PRD.md` have **not** been
+worked in order. The layout editor and the controller engine are largely built while the core
+application has no shell, no navigation and no launcher. That is a consequence of building what a
+hand could judge on a real device each round, and it means the restructure and the home screen now
+cost more than they would have early — which is why they are next rather than later.
+
 ### `0.0.44-dev` — A Place To Press Things
 
 **Build 1 of the re-sorted queue, and its point is to make every later round cheaper.**

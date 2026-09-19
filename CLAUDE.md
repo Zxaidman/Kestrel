@@ -13,24 +13,35 @@ Guidance for Claude Code and other AI coding agents working in this repository.
 environment. It aims to turn an ordinary phone into a handheld gaming device: one place to
 launch emulators/streaming clients, configure a virtual gamepad, pick a layout and skin, and play.
 
-**Current state: build foundation, plus a completed input feasibility experiment. No product
-behaviour exists yet.**
+**Current state: a working virtual controller and layout editor, on one device, with no front
+door.** `docs/PROJECT_STATE.md` is **canonical** for the phase position and the testing state; this
+section summarises it and is corrected from it when the two disagree.
+
+A person can start a session, get a virtual gamepad over another application, arrange every control
+by dragging or by typing numbers, keep separate landscape and portrait arrangements, tune stick and
+trigger feel, and prove every control end to end on a test screen. **They cannot launch a game from
+Kestrel** — there is no home screen, no discovery and no launcher, and that is the gap.
 
 Phase 0 passed on the reference device — a Xiaomi Redmi Note 13 5G on HyperOS 3.0.3, Android 15 —
 and `ADR-INPUT-001` is Accepted, scoped to that device. The evidence is in `docs/phase0/results/`.
-Nothing has been tested on any other hardware, latency has never been measured, and no fallback for
-a user without Shizuku has been tested at all. Treat the mechanism as proven where it was measured
-and as an assumption everywhere else.
+**Nothing has been tested on any other hardware, latency has never been measured, and no fallback
+for a user without Shizuku has been tested at all.** Treat every mechanism as proven where it was
+measured and as an assumption everywhere else.
 
 What exists:
 
 - A Gradle build: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, the wrapper, and
-  `gradle/libs.versions.toml` as the single place versions are declared.
-- Three modules. `:app` is the assembly layer — manifest, one activity, a placeholder screen,
-  nothing else. `:core` is plain Kotlin/JVM and currently holds only `core/common/Outcome.kt`.
-  `:tools:phase0` is the experimental feasibility harness.
-- No `feature/`, `platform/`, or `data/` modules, no CI workflows, no input backend, no overlay, no
-  session, no configuration implementation.
+  `gradle/libs.versions.toml` as the single place versions are declared. CI is
+  `.github/workflows/build.yml` — it builds, lints, tests, and attaches both APKs to the run.
+- Three Gradle modules. `:app` carries the activity plus `feature/` (`editor`, `testground`),
+  `platform/` (`display`, `input`, `overlay`, `session`, `settings`, `shizuku`, `storage`) and the
+  diagnostics screen, as **packages** rather than separate modules — see `CRIT-3`. `:core` is plain
+  Kotlin/JVM and holds `common`, `configuration`, `diagnostics`, `input`, `layout`, `profile`,
+  `settings` and `storage`. `:tools:phase0` is the experimental feasibility harness.
+- **No `data/` module yet**, and no launcher, discovery or navigation of any kind.
+- **The phases in §6 have not been followed in order.** The layout editor and the controller engine
+  ran ahead of the core application, because each build is tested on a real device and the parts
+  that could be felt got built first. `docs/PROJECT_STATE.md` records the actual position.
 
 `:tools:phase0` is **not product code**. It is a measurement instrument with its own identifier and
 its own APK, it depends on neither `:app` nor `:core`, and it deliberately injects nothing — it only
@@ -46,9 +57,13 @@ domain type needs an Android API, it belongs in `platform/`.
 What an agent can actually verify here:
 
 ```bash
-./gradlew :core:test    # JVM only, no SDK needed — works in a bare container
+./gradlew :core:test    # JVM only, no SDK needed — works in a bare container. 272 tests.
 ./gradlew build         # everything: compiles both modules, lints, tests. Needs the SDK.
 ```
+
+**`:core:test` is the whole of the automated coverage.** There are no instrumentation tests. Nothing
+automated touches a lifecycle, a service, an overlay or a window, and the unit tests prove the
+domain and nothing about a phone — see `docs/PROJECT_STATE.md` for what that leaves unverified.
 
 The whole build is known to pass with the SDK installed. In a container without one, `:core:test`
 still runs but anything Android-side fails with `SDK location not found` — a missing prerequisite,
@@ -67,7 +82,8 @@ commented. See `CHANGELOG.md` for what is verified and what is not.
 
 | File | Authoritative for |
 | --- | --- |
-| `README.md` | Product overview, vision, status |
+| `docs/PROJECT_STATE.md` | **Canonical** phase position, what is verified, what is still assumed |
+| `README.md` | Product overview and vision |
 | `PRD.md` | Product requirements, scope, non-goals, development phases, MVP definition |
 | `ARCHITECTURE.md` | Layers, boundaries, domain model, input/Shizuku/session/display architecture |
 | `PROJECT_STRUCTURE.md` | **Canonical** folder organization and dependency rules |
@@ -112,6 +128,9 @@ Several lists used to be duplicated across documents and had drifted. One owner 
   corrected.
 - **Which decision records exist** — the directory `docs/adr/` itself. Never cite a record from a
   list quoted in prose without checking the directory.
+- **Where the project is** — `docs/PROJECT_STATE.md` is canonical. `CLAUDE.md` §1 and
+  `README.md` summarise it in a paragraph each and say so; if they disagree, the canonical document
+  wins and the others are corrected.
 - **Status vocabularies** — three exist for different purposes and are not interchangeable:
   compatibility Status + Confidence (`docs/COMPATIBILITY.md` §3–§4), Phase-0 evidence Grades A–E
   (`docs/PHASE-0.md` §28), and claim-verification states (`AI_DEVELOPMENT_GUIDE.md`). The mapping
@@ -240,6 +259,13 @@ See `SECURITY.md`.
 
 `Phase 0 (input feasibility)` → `1 Core app` → `2 Controller engine` → `3 Layout editor` →
 `4 Gaming session` → `5 Shizuku` → `6 Skins` → `7 Community system`.
+
+**The phases have not been worked in this order, and `docs/PROJECT_STATE.md` records the real
+position.** Phase 3 (layout editor) and Phase 2 (controller engine) are largely built while Phase 1
+(core application) has no shell, no navigation and no launcher. That happened because every build is
+tested on a real device and directed from the result, so the parts a hand could judge got built
+first. It is not a licence to keep skipping: the restructure and the home screen cost the amount of
+code that exists when they happen, which is why they are next.
 
 **Phase 0 passed on one device, and `ADR-INPUT-001` is Accepted with that scope written into it.**
 What that licenses is building Phase 1 on the named mechanism. What it does not license is treating

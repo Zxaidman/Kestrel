@@ -17,14 +17,28 @@ Kestrel is intended to bring a software-first handheld experience to ordinary An
 
 ## Project Status
 
-**Status: Early architecture / technical feasibility**
+**Status: a working virtual controller and layout editor, on one device, with no front door.**
 
-Kestrel is not yet a finished application.
+Kestrel is not yet a finished application, and the shape of what is missing is specific rather than
+general. On the reference device a person can start a session, get a virtual gamepad on screen over
+another application, arrange every control by dragging or by typing numbers, keep separate landscape
+and portrait arrangements, tune stick and trigger feel, and prove every control end to end on a test
+screen.
 
-The first engineering milestone is a technical feasibility prototype for gamepad-style input on real Android devices. Before a large amount of UI and feature work is built, the project must prove that the intended input architecture can reliably control real target applications.
+**They cannot launch a game from Kestrel.** There is no home screen, no application discovery and no
+launcher. That is the gap between this and a product, and it is what the next work is aimed at.
+
+The input feasibility question the project started with is **answered**: Phase 0 passed on the
+reference device and `ADR-INPUT-001` is Accepted, scoped to that device.
+
+**Everything above is one device, one firmware, one person testing.** Nothing has been verified on
+other hardware, latency has never been measured, and builds from this repository are debug-signed
+and not distributable.
 
 See:
 
+- [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) — **where the project actually is**, and what is
+  verified rather than assumed
 - [`PRD.md`](PRD.md)
 - [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - [`docs/PHASE-0.md`](docs/PHASE-0.md)
@@ -1349,7 +1363,8 @@ The full set, and what each file is authoritative for:
 
 | Document | Authoritative for |
 | --- | --- |
-| [`README.md`](README.md) | Project overview, vision, status |
+| [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) | **Canonical** phase position and testing state |
+| [`README.md`](README.md) | Project overview and vision |
 | [`PRD.md`](PRD.md) | Product requirements, scope, non-goals, phases, MVP |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Layers, boundaries, domain model, subsystem architecture |
 | [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md) | Canonical folder organization and dependency rules |
