@@ -13,6 +13,25 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.45-dev` — Five modules, and the walls are real (`CRIT-3`, part one)
+
+Every line of product code lived in `:app`, and `PROJECT_STRUCTURE.md` had described `feature/`,
+`platform/` and `data/` since before any of it was written. The tree now matches: `:core`, `:data`,
+`:platform`, `:feature`, `:app` — the five §26 recommends, and no more.
+
+**The point is two boundaries the compiler enforces**, tested by writing a deliberate violation of
+each and watching it fail: a screen cannot call Shizuku (it is on `:platform`'s classpath only, and its
+manifest entries moved with it), and platform code cannot reach a screen.
+
+Two places crossed a wall and were fixed with no change in behaviour: the session notification no
+longer names the activity class, and the diagnostics screen no longer reaches into the activity to
+apply display settings — the activity watches the setting instead.
+
+Checked past "it compiles": the 277 core tests pass with the built-in layouts moved to `:data`, the
+layout is inside the APK, and the merged manifest carries the service, Shizuku's provider and every
+permission. **Unverified on a device** — a module split that compiles and packages correctly has
+still not been run.
+
 ### `0.0.45-dev` — `BUG-55`: signal colours readable on every ground
 
 The amber, green and orange that mean "look at this", "proven" and "too far" were chosen for the

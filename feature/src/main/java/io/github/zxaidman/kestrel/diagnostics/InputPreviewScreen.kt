@@ -257,10 +257,11 @@ public fun InputPreviewScreen(
     ) {
         // Inside the scroll on purpose. It sat above it and held a band of a small screen
         // permanently, which is a title costing more than it says.
+        // The application's own label, read from the platform rather than from :app's resources,
+        // which a screen in :feature cannot see.
+        val label = LocalContext.current.let { it.applicationInfo.loadLabel(it.packageManager).toString() }
         Text(
-            text = androidx.compose.ui.res.stringResource(
-                id = io.github.zxaidman.kestrel.R.string.app_name
-            ),
+            text = label,
             style = MaterialTheme.typography.headlineSmall,
         )
         val context = LocalContext.current
@@ -482,9 +483,9 @@ public fun InputPreviewScreen(
             ) {
                 AppSettings.update { it.copy(display = update(it.display)) }
                 AppSettings.persist(context)
-                // Applied at once rather than on the next launch: all three are settings somebody
-                // turns on to see what they do.
-                (context as? io.github.zxaidman.kestrel.MainActivity)?.applyDisplayPreferences()
+                // Applied at once by the activity, which watches this setting. This screen used to
+                // reach into the activity to do it, and a screen in :feature cannot see the activity
+                // that is assembled in :app.
             }
 
             Row(

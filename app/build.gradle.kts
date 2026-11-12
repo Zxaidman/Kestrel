@@ -65,7 +65,6 @@ android {
 
     buildFeatures {
         compose = true
-        aidl = true
     }
 }
 
@@ -76,36 +75,13 @@ kotlin {
 }
 
 dependencies {
+    // The assembly layer depends on everything and nothing depends on it. Shizuku, storage and the
+    // input engine arrive through :platform; the screens through :feature; the built-in layouts as
+    // resources through :data. See settings.gradle.kts for the boundary each module enforces.
     implementation(project(":core"))
-
-    // Shizuku — the privilege ADR-INPUT-001's backend needs.
-    //
-    // Why here: the accepted backend requires shell privilege, and no public API grants it to an
-    // ordinary application. It is confined to platform/shizuku/ behind one capability boundary
-    // (PROJECT_STRUCTURE.md §558), and ADR-003 keeps it optional at runtime — with Shizuku absent
-    // the application still runs and reports what is unavailable.
-    // Licence: Apache-2.0. Within the API 29 baseline.
-    // It must never reach :core or any Composable directly (CLAUDE.md §4).
-    implementation(libs.shizuku.api)
-    implementation(libs.shizuku.provider)
-
-    // Reading and writing inside the folder the user chose.
-    //
-    // Why here: everything Kestrel keeps lives in a folder on shared storage that the user picks,
-    // so it survives an uninstall and can be copied in a file manager. Reaching that folder means
-    // the Storage Access Framework, whose framework API is DocumentsContract — a dozen calls of
-    // URI arithmetic per operation, none of which can be exercised on a laptop. This library is the
-    // thin wrapper AndroidX ships for exactly that, and it removes a class of fault this project
-    // could only find on a device.
-    //
-    // Why not the alternative: MANAGE_EXTERNAL_STORAGE would need no library and would grant access
-    // to every file on the phone, be a restricted permission, and — on the evidence of ADR-006 —
-    // risk another Play Protect block for every user. A folder the user chose is both smaller and
-    // more honest.
-    //
-    // Licence: Apache-2.0. Minimum SDK 19, within the API 29 baseline. No transitive dependencies
-    // beyond androidx.core, which is already present.
-    implementation(libs.androidx.documentfile)
+    implementation(project(":data"))
+    implementation(project(":platform"))
+    implementation(project(":feature"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

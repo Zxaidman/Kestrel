@@ -10,7 +10,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.compose.runtime.mutableStateOf
-import io.github.zxaidman.kestrel.MainActivity
 import io.github.zxaidman.kestrel.platform.input.InputEngine
 import io.github.zxaidman.kestrel.platform.overlay.ControllerOverlay
 import io.github.zxaidman.kestrel.platform.input.virtual.VirtualControllerBackend
@@ -252,10 +251,14 @@ public class ControllerSessionService : Service() {
             Intent(this, ControllerSessionService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        // The application's own launcher activity, looked up rather than named. Naming it meant this
+        // module depended on the activity, and the activity is assembled in :app — which depends on
+        // this module. The intent is the same explicit one, with no flags added.
+        val launcher = packageManager.getLaunchIntentForPackage(packageName)?.component
         val open = PendingIntent.getActivity(
             this,
             0,
-            Intent(this, MainActivity::class.java),
+            Intent().setComponent(launcher),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 

@@ -33,12 +33,20 @@ What exists:
 - A Gradle build: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, the wrapper, and
   `gradle/libs.versions.toml` as the single place versions are declared. CI is
   `.github/workflows/build.yml` — it builds, lints, tests, and attaches both APKs to the run.
-- Three Gradle modules. `:app` carries the activity plus `feature/` (`editor`, `testground`),
-  `platform/` (`display`, `input`, `overlay`, `session`, `settings`, `shizuku`, `storage`) and the
-  diagnostics screen, as **packages** rather than separate modules — see `CRIT-3`. `:core` is plain
-  Kotlin/JVM and holds `common`, `configuration`, `diagnostics`, `input`, `layout`, `profile`,
-  `settings` and `storage`. `:tools:phase0` is the experimental feasibility harness.
-- **No `data/` module yet**, and no launcher, discovery or navigation of any kind.
+- The five Gradle modules `PROJECT_STRUCTURE.md` §26 recommends, each a boundary the compiler
+  checks (`CRIT-3`):
+  - `:core` — plain Kotlin/JVM: `common`, `configuration`, `diagnostics`, `input`, `layout`,
+    `profile`, `settings`, `storage`. Cannot see Android, Compose or Shizuku.
+  - `:data` — the built-in layouts, as resources. No code.
+  - `:platform` — `display`, `input`, `overlay`, `session`, `settings`, `shizuku`, `storage`, and the
+    manifest entries they need. **Shizuku is on this module's classpath and no other**, so a screen
+    calling it fails to compile.
+  - `:feature` — the screens and the theme: `feature/editor`, `feature/testground`, `diagnostics`,
+    `ui/theme`. Depends on `:platform`; `:platform` cannot depend on it.
+  - `:app` — the activity, the manifest, the resources.
+  Both walls were tested by writing a deliberate violation and watching it fail to compile.
+  `:tools:phase0` is the experimental feasibility harness.
+- No launcher or discovery yet.
 - **The phases in §6 have not been followed in order.** The layout editor and the controller engine
   ran ahead of the core application, because each build is tested on a real device and the parts
   that could be felt got built first. `docs/PROJECT_STATE.md` records the actual position.

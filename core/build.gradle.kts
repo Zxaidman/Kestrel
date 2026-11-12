@@ -28,6 +28,9 @@ kotlin {
 }
 
 dependencies {
+    // The shipped layouts live in :data now. Only the tests read them — to check every built-in is
+    // valid on every screen shape — so the domain itself still depends on nothing.
+    testImplementation(project(":data"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

@@ -29,10 +29,19 @@ rootProject.name = "Kestrel"
 // Shizuku, because none of them can resolve there. The boundary is checked by the compiler rather
 // than by review.
 //
-// Further modules (feature/, platform/, data/) are added when the corresponding implementation
-// begins, per PROJECT_STRUCTURE.md §26.
+// The five modules PROJECT_STRUCTURE.md §26 recommends to start with, and no more (§24). Each one is a
+// boundary the compiler checks rather than a folder:
+//
+// - :core     — pure domain logic, Kotlin/JVM. Cannot see Android, Compose or Shizuku.
+// - :data     — packaged configuration. Resources only, no code.
+// - :platform — every Android-specific implementation. Cannot see a screen; Shizuku stops here.
+// - :feature  — the screens. Sees :platform's services, never Shizuku.
+// - :app      — the activity, the navigation and the manifest that assemble them.
 include(":app")
 include(":core")
+include(":data")
+include(":platform")
+include(":feature")
 
 // EXPERIMENTAL — Phase 0 feasibility harness. Separate APK, not a dependency of :app.
 // Remove this module once Phase 0 concludes and ADR-INPUT-001 is decided.

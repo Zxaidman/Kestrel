@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Everything the platform module needs from Android, declared beside the code that needs it and
+    merged into the application's manifest at build time. Shizuku's permission and provider are here
+    rather than in :app so that Shizuku is mentioned in one module only.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Optional by ADR-003: with Shizuku absent Kestrel still runs, and says what is unavailable
+         rather than refusing to start (docs/DEGRADED_STATE.md). -->
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+    <!-- A session outlives this screen on purpose; the notification is what makes it visible and
+         stoppable from anywhere. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- The controls must be drawn over the target, in a window that never takes focus: the
+         platform delivers a controller's events to the focused window, so controls inside an
+         ordinary activity send their input back to Kestrel. Measured — see
+         docs/phase0/results/app-stick-focus-20260819-redmi-note-13-5g.json. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application>
+
+        <!-- Named in full: in a library manifest a leading dot resolves against this module's
+             namespace, not the application's. -->
+        <service
+            android:name="io.github.zxaidman.kestrel.platform.session.ControllerSessionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Holds a virtual controller open for a gaming session, and keeps it
+                    visible and stoppable while it exists." />
+        </service>
+
+        <!-- Required by the Shizuku library so it can hand the binder to this process. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"
+            tools:ignore="ExportedContentProvider" />
+
+    </application>
+
+</manifest>

@@ -126,6 +126,30 @@ is possible without the rest of the system noticing.
 **Ordered with** `CRIT-2`: doing the navigation first and the modules afterwards would mean moving
 the same code twice.
 
+**Built in Build 2, step 1 — the modules.** The five `PROJECT_STRUCTURE.md` §26 recommends and no
+more (§24 warns against a module per screen): `:core`, `:data`, `:platform`, `:feature`, `:app`.
+Files moved with `git mv`, packages unchanged, so history follows them. Two walls, each **tested by
+writing a deliberate violation and watching it fail to compile**:
+
+- a screen calling Shizuku → `Unresolved reference 'rikka'` — Shizuku is an `implementation`
+  dependency of `:platform` only, and its manifest entries moved with it;
+- platform code reaching a screen → `Unresolved reference 'ui'`.
+
+Two places crossed a wall and were fixed without changing behaviour: the session notification named
+`MainActivity` (it now looks up the app's own launcher component — the same explicit intent), and the
+diagnostics screen reached into the activity to apply display settings (the activity now watches the
+setting and applies it whenever it changes, from any screen).
+
+Checked beyond "it compiles": 277 core tests pass with the layouts now in `:data`; the built-in
+layout is inside the APK; the merged manifest has the service, Shizuku's provider and every
+permission, with the provider's authority on the application's id.
+
+**One alarm that was false, recorded so it is not raised again:** a search for Shizuku outside
+`platform/` matched `diagnostics/SetupScreen.kt` — the URL `https://shizuku.rikka.app/` in a link,
+not a call.
+
+**Still to do in Build 2:** the input backend behind an interface (`ADR-002`).
+
 ---
 
 ### `CRIT-4` — Decide what `v0.1.0` contains

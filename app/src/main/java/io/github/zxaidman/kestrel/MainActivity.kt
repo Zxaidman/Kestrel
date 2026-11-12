@@ -180,6 +180,13 @@ class MainActivity : ComponentActivity() {
         applyDisplayPreferences()
 
         setContent {
+            // Display settings take effect the moment they change, from whichever screen changed
+            // them. The diagnostics screen used to reach into this activity to do it, which a screen
+            // in :feature cannot do. Keyed on the value, so it runs when the setting changes and not
+            // on every recomposition; the first run repeats the call above, which is harmless.
+            androidx.compose.runtime.LaunchedEffect(AppSettings.current.value.display) {
+                applyDisplayPreferences()
+            }
             io.github.zxaidman.kestrel.ui.theme.KestrelTheme(
                 theme = AppSettings.current.value.display.theme,
                 trueBlack = AppSettings.current.value.display.trueBlack,

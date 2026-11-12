@@ -43,6 +43,8 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 # Compose versions come from the BOM, so the individual artifacts carry no version.
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+# State holders only, for :platform — which keeps observable settings but must not be able to draw.
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
@@ -63,6 +65,8 @@ shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+# The same Android Gradle Plugin as the application, for the :platform and :feature modules.
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
