@@ -33,15 +33,19 @@ import io.github.zxaidman.kestrel.core.input.ControlForm
 import io.github.zxaidman.kestrel.core.input.GamepadControl
 import io.github.zxaidman.kestrel.ui.theme.KButton
 import io.github.zxaidman.kestrel.ui.theme.KOutlinedButton
+import io.github.zxaidman.kestrel.ui.theme.Signal
+import io.github.zxaidman.kestrel.ui.theme.inkOn
+import io.github.zxaidman.kestrel.ui.theme.provenText
+import io.github.zxaidman.kestrel.ui.theme.warningText
 
 /** Proven. */
-private val LIT = Color(0xFF5FBF77)
+private val LIT = Signal.PROVEN
 
 /** Arrived, but not as far as it should go — a trigger at a third, a pad missing a corner. */
-private val PARTIAL = Color(0xFFF2B441)
+private val PARTIAL = Signal.WARNING
 
 /** Held right now. */
-private val HELD = Color(0xFF8C9EFF)
+private val HELD = Signal.HELD
 
 /**
  * Every control, and what the platform has delivered for each.
@@ -92,7 +96,7 @@ public fun TestGroundScreen(state: TestGroundState, onClose: () -> Unit) {
                 text = "${board.provenCount} / ${board.total}",
                 style = MaterialTheme.typography.titleMedium,
                 fontFamily = FontFamily.Monospace,
-                color = if (board.provenCount == board.total) LIT else MaterialTheme.colorScheme.onSurface,
+                color = if (board.provenCount == board.total) provenText() else MaterialTheme.colorScheme.onSurface,
             )
             LinearProgressIndicator(
                 progress = { board.provenCount.toFloat() / board.total },
@@ -130,14 +134,14 @@ public fun TestGroundScreen(state: TestGroundState, onClose: () -> Unit) {
                 text = "left to prove: " + board.unproven.joinToString(", ") { it.defaultLabel },
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = FontFamily.Monospace,
-                color = PARTIAL,
+                color = warningText(),
             )
         } else {
             Text(
                 text = "Every control proven on this device, this session.",
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = FontFamily.Monospace,
-                color = LIT,
+                color = provenText(),
             )
         }
 
@@ -174,9 +178,13 @@ private fun Tile(reading: ControlReading) {
         reading.seen -> PARTIAL
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
+    val fill = colour.copy(alpha = if (reading.proven || reading.active) 0.85f else 0.35f)
     Surface(
         modifier = Modifier.fillMaxWidth().height(46.dp),
-        color = colour.copy(alpha = if (reading.proven || reading.active) 0.85f else 0.35f),
+        color = fill,
+        // Chosen from the fill as drawn, not from the theme: the ordinary text colour was 1.9 to
+        // 2.6 : 1 on these fills in the dark themes (`BUG-55`).
+        contentColor = inkOn(fill),
         shape = RoundedCornerShape(10.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -206,7 +214,7 @@ private fun AxisBar(reading: ControlReading) {
         LinearProgressIndicator(
             progress = { reading.magnitude.toFloat().coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().height(8.dp),
-            color = if (reading.proven) LIT else PARTIAL,
+            color = if (reading.proven) provenText() else warningText(),
         )
     }
 }
@@ -224,7 +232,8 @@ private fun StickBox(reading: ControlReading, modifier: Modifier = Modifier) {
                 .height(120.dp)
                 .border(
                     1.dp,
-                    if (reading.proven) LIT else MaterialTheme.colorScheme.outline,
+                    // A mark that carries meaning needs 3 : 1; the bright green is 2.3 on the light page.
+                    if (reading.proven) provenText() else MaterialTheme.colorScheme.outline,
                     RoundedCornerShape(10.dp),
                 ),
             contentAlignment = Alignment.Center,
@@ -262,13 +271,15 @@ private fun PadWheel(reading: ControlReading) {
         order.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 row.forEach { direction ->
+                    val fill = when {
+                        direction == null -> Color.Transparent
+                        direction in reading.directions -> LIT.copy(alpha = 0.85f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    }
                     Surface(
                         modifier = Modifier.size(46.dp),
-                        color = when {
-                            direction == null -> Color.Transparent
-                            direction in reading.directions -> LIT.copy(alpha = 0.85f)
-                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                        },
+                        color = fill,
+                        contentColor = inkOn(fill),
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center) {

@@ -60,8 +60,8 @@ hardware.
 | `superseded` | `FEAT-13` |
 | `testing` | Build 1 — `FEAT-3`, `BUG-3`, `BUG-4`, `BUG-54`, `FEAT-67`, `FEAT-68` |
 | `testing` | `FEAT-69` design system — awaiting review |
-| `building` | — |
-| `pending` | `BUG-55`, `CRIT-1`–`CRIT-4`, `BUG-5`, `BUG-6`, `FEAT-1`, `FEAT-2`, `FEAT-4`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
+| `building` | Build 2 — `CRIT-3`, `CRIT-2`, `BUG-55` |
+| `pending` | `CRIT-1`, `CRIT-4`, `BUG-5`, `BUG-6`, `FEAT-1`, `FEAT-2`, `FEAT-4`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
 
@@ -90,7 +90,7 @@ lost no future version can ever update an installed Kestrel.
 
 ### `CRIT-2` — A home screen, and navigation
 
-**Phase:** `pending`
+**Phase:** `building` — Build 2, `0.0.45-dev`.
 
 **Why it blocks.** What opens today is a diagnostics harness: every developer control, every raw
 number, one long scroll. It was the right thing while the question was "does any of this work". It
@@ -109,7 +109,7 @@ build … hide unnecessary options from the homepage and good navigation setting
 
 ### `CRIT-3` — Modular architecture, as `PROJECT_STRUCTURE.md` already describes it
 
-**Phase:** `pending`
+**Phase:** `building` — Build 2, `0.0.45-dev`.
 
 **Why it blocks.** Every line of product code lives in `:app`. `PROJECT_STRUCTURE.md` has described
 `feature/`, `platform/` and `data/` modules since before any of it was written, and the gap between
@@ -1140,7 +1140,7 @@ so it wants its own build.
 
 ### `BUG-55` — Signal colours chosen for a dark ground are used as text on a light one
 
-**Phase:** `pending`.
+**Phase:** `building` — Build 2, `0.0.45-dev`..
 **Found by:** measuring every text-on-ground pair while writing the design system (`FEAT-69`). Nobody
 reported it; it was measured.
 
@@ -1165,6 +1165,37 @@ than quietly re-tinting the reference and leaving the code wrong.
 
 **Why the reference device did not show it:** the project owner uses a dark theme, where the floating
 block's amber reads well — and the test ground is one build old.
+
+**Fixing it found two more sites, and an error in the design system.** Searching the editor for every
+canvas colour used as text turned up:
+
+| Where | Pair | Contrast |
+| --- | --- | --- |
+| The size window's refusal message, **light** | fixed `#E0603A` on the window | **2.98 : 1** |
+| The settings sheet's window-share figure when crowded, **light** | fixed `#E0603A` on the sheet | **3.42 : 1** |
+
+The design system said refusals use the `error` token. **The code never did** — that was written from
+the token's name, not from the call site. Corrected by making the code do what the reference said.
+
+**Built.** Signal colours keep their meaning and change their value with the ground: `warningText()`,
+`provenText()` and `offscreenText()` in the theme give a darker value on a light surface and the
+original bright one elsewhere. The refusal uses `MaterialTheme.colorScheme.error`. Tile and pad-wheel
+labels take whichever of the theme's two inks reads better on the fill **as drawn** — composited over
+the surface — because no single ink works: dark ink fails on the dim partial tile in the dark themes.
+That choice is `Contrast` in `core/common`, pure and unit tested, including a test that the shipped
+pairing *fails*, so it cannot be quietly simplified back.
+
+| Where | Before | After, worst theme |
+| --- | --- | --- |
+| Warning line, light | 1.78 | 5.76 (`#7D5200` on the 6dp block) |
+| "Left to prove", light | 1.78 | 6.56 |
+| "Every control proven", light | 2.3 | 6.23 (`#256B3A`) |
+| Refusal, light | 2.98 | 5.43 (`error`) |
+| Window share when crowded, light | 3.42 | 5.71 (`#9C3B17` on an 8dp window) |
+| Tile labels, both dark themes | 1.90 – 2.62 | 5.07 – 7.70 |
+
+Every value measured against the most tinted ground it lands on, using Material's tonal-elevation
+formula — so it is a calculation, not a reading off the reference device's screen.
 
 ---
 

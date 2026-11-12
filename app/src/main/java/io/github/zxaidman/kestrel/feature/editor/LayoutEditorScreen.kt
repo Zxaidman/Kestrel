@@ -106,6 +106,8 @@ import io.github.zxaidman.kestrel.platform.display.DeviceSurface
 import io.github.zxaidman.kestrel.platform.session.SessionState
 import io.github.zxaidman.kestrel.platform.settings.AppSettings
 import io.github.zxaidman.kestrel.ui.theme.KButton
+import io.github.zxaidman.kestrel.ui.theme.offscreenText
+import io.github.zxaidman.kestrel.ui.theme.warningText
 import io.github.zxaidman.kestrel.ui.theme.KOutlinedButton
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -463,7 +465,9 @@ public fun LayoutEditorScreen(
                             text = warnings.joinToString("   "),
                             style = MaterialTheme.typography.labelSmall,
                             fontFamily = FontFamily.Monospace,
-                            color = Color(0xFFF2B441),
+                            // Drawn for the block's own surface, which follows the theme. The canvas
+                            // amber was 1.78 : 1 on it in the light theme (`BUG-55`).
+                            color = warningText(),
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -1347,7 +1351,7 @@ private fun WindowSummary(
                 "%3d%%  %s".format((share * 100).roundToInt(), cluster.elementIds.joinToString(" ")),
             style = MaterialTheme.typography.bodySmall,
             fontFamily = FontFamily.Monospace,
-            color = if (share > CROWDED) Color(0xFFE0603A) else MaterialTheme.colorScheme.onSurface,
+            color = if (share > CROWDED) offscreenText() else MaterialTheme.colorScheme.onSurface,
         )
     }
     Text(
@@ -1836,7 +1840,9 @@ private fun NumbersDialog(
                         text = problem,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
-                        color = Color(0xFFE0603A),
+                        // The theme's error colour, not the canvas orange: that was a fixed value in
+                        // every theme and 2.98 : 1 on the light window (`BUG-55`).
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }

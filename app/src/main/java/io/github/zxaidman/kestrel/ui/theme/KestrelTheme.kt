@@ -12,10 +12,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.zxaidman.kestrel.core.common.Contrast
 import io.github.zxaidman.kestrel.core.settings.AppTheme
 
 /**
@@ -100,6 +104,78 @@ private val DARK_BLACK: ColorScheme = DARK_GREY.copy(
     surfaceContainerHighest = Color(0xFF1E1E24),
     outline = Color(0xFF7C7C86),
 )
+
+/**
+ * The signal colours: what a state *means*, whatever it is drawn on.
+ *
+ * **They were chosen for the editor canvas, which is always dark, and then reused as text on the
+ * application's own surface, which follows the theme.** In the light theme that made them vanish —
+ * amber warning text measured 1.78 : 1, the orange refusal 2.98 : 1, against a floor of 4.5
+ * (`BUG-55`). Nobody reported it; it was measured while the design system was being written down.
+ *
+ * So a signal keeps its meaning and changes its value with the ground. The bright values are still
+ * right on the canvas and on the dark themes' surfaces (6.8 to 11.4 : 1); a darker one is drawn on a
+ * light surface. Use [warningText], [provenText] and [offscreenText] for words, never the raw values.
+ * The raw values are for fills and marks on dark grounds.
+ */
+public object Signal {
+    /** Amber: look at this. Overlap, the snap guide, a warning line, a proof not yet complete. */
+    public val WARNING: Color = Color(0xFFF2B441)
+
+    /** Orange: too far. A control off the screen, a window over a quarter of the screen. */
+    public val OFFSCREEN: Color = Color(0xFFE0603A)
+
+    /** Green: proven on the test ground. */
+    public val PROVEN: Color = Color(0xFF5FBF77)
+
+    /** Periwinkle: held right now, on the test ground. */
+    public val HELD: Color = Color(0xFF8C9EFF)
+
+    // Measured on the light surface and on the most tinted light ground they land on (a window at
+    // 8dp of tonal elevation): 5.76, 5.47 and 5.71 : 1 at worst.
+    internal val WARNING_ON_LIGHT: Color = Color(0xFF7D5200)
+    internal val PROVEN_ON_LIGHT: Color = Color(0xFF256B3A)
+    internal val OFFSCREEN_ON_LIGHT: Color = Color(0xFF9C3B17)
+}
+
+/** Whether the theme in force paints on a light ground. Read from the surface, so it follows any theme. */
+@Composable
+@ReadOnlyComposable
+private fun onLightGround(): Boolean = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+
+/** Amber, drawn to be read on the surface it is on. For words; fills use [Signal.WARNING]. */
+@Composable
+@ReadOnlyComposable
+public fun warningText(): Color = if (onLightGround()) Signal.WARNING_ON_LIGHT else Signal.WARNING
+
+/** Green, drawn to be read on the surface it is on. */
+@Composable
+@ReadOnlyComposable
+public fun provenText(): Color = if (onLightGround()) Signal.PROVEN_ON_LIGHT else Signal.PROVEN
+
+/** Orange, drawn to be read on the surface it is on. */
+@Composable
+@ReadOnlyComposable
+public fun offscreenText(): Color = if (onLightGround()) Signal.OFFSCREEN_ON_LIGHT else Signal.OFFSCREEN
+
+/**
+ * The ink to write on [fill], which may be translucent: whichever of the theme's two text colours
+ * reads better on what is actually drawn.
+ *
+ * Not one fixed ink, and that is the point. A proven tile is a bright fill that needs dark ink in
+ * every theme; a tile at 35% comes out a dim brown in the dark themes and needs light ink. The
+ * theme's ordinary text colour was right on the page and 1.9 to 2.6 : 1 on those fills (`BUG-55`).
+ */
+@Composable
+@ReadOnlyComposable
+public fun inkOn(fill: Color): Color {
+    val drawn = Contrast.composite(fill.toArgb(), MaterialTheme.colorScheme.surface.toArgb())
+    return Color(Contrast.inkFor(drawn, INK_DARK.toArgb(), INK_LIGHT.toArgb()))
+}
+
+// The two text colours the schemes already use, so a tile's ink is never a third grey.
+private val INK_DARK = Color(0xFF1A1B21)
+private val INK_LIGHT = Color(0xFFE4E1E9)
 
 /** Whether the chosen theme paints on a dark ground, which the system bars need to know. */
 public fun isDark(theme: AppTheme, systemIsDark: Boolean): Boolean = when (theme) {

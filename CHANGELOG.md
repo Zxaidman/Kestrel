@@ -13,6 +13,28 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.45-dev` — `BUG-55`: signal colours readable on every ground
+
+The amber, green and orange that mean "look at this", "proven" and "too far" were chosen for the
+editor canvas, which is always dark, and then reused as text on the application's surface, which
+follows the theme. Measured while the design system was being written: amber warning text was
+**1.78 : 1** on the light theme and the test ground's tile labels **1.90 to 2.62 : 1** in both dark
+themes, against a floor of 4.5.
+
+**Fixing it found two more sites** — the size window's refusal message (2.98 : 1) and the window-share
+figure in settings (3.42 : 1) — **and an error in the published design system**, which said refusals
+use the `error` token. The code never had. The reference was written from a token's name rather than
+from the call site; the code now does what the reference said.
+
+A signal now keeps its meaning and changes its value with the ground: a darker amber, green and orange
+on a light surface, the original bright ones on dark surfaces and the canvas. Tile labels choose
+whichever of the theme's two inks reads better on the fill as actually drawn — no single ink passes,
+because a dim partial tile needs light ink where a bright proven one needs dark. That choice is pure
+code in `:core`, unit tested, with a test that asserts the shipped pairing fails.
+
+Every value is at least 5.07 : 1 on the most tinted ground it lands on. **Warning:** those grounds are
+calculated from Material's tonal-elevation formula, not read off a screen. Unverified on a device.
+
 ### Design system — Kestrel's visual language, written down
 
 Kestrel's design system is published at https://claude.ai/artifact/7Gon69W2hBG8XwfYAiWLsD, built from the Android code at `main@7b74b78`. It
