@@ -664,6 +664,39 @@ dragged off the screen. The control menu moves like the block. **All measured.**
 
 ---
 
+## Built, awaiting review — the design system
+
+### `FEAT-69` — Kestrel's design system, written down from the code
+
+Published at https://claude.ai/artifact/7Gon69W2hBG8XwfYAiWLsD, built from `main@7b74b78`. Private until shared from its page.
+
+**What it is.** A reference for anyone building on Kestrel: the brand book, 64 tokens across three
+themes (light, grey dark, AMOLED black), twelve type styles, spacing, radii and sizes, nine
+components with static previews and guidelines, the mark, and a cover.
+
+**What it documents is what already ships.** No new look. Every value is copied from four Kotlin
+files and the launcher icon, every usage note says where the code uses it, and every quoted string
+was checked against the code before it went in — two were wrong on the first draft and corrected.
+
+**Five palettes, each for a reason:** the mark (gold on slate), the application (Material 3, one
+slate-blue accent, three surfaces), the editor canvas (always dark, because it is a picture of a
+screen), the pad (translucent, because it is drawn over somebody else's application), and the test
+ground's proof states. The brand book's first rule is to decide which ground a colour lands on
+before choosing it.
+
+**Measured, not assumed.** Every text-on-ground pair was checked in all three themes. Everything
+passes except four pairs in shipped code, which the system records exactly and flags rather than
+quietly re-tinting → `BUG-55`.
+
+**Static previews, and why.** Kestrel's components are Jetpack Compose and cannot run in a browser,
+so each preview is a rendition of the Compose code it names. The tonal elevation of windows is
+approximated and says so.
+
+**Cost and limit.** The colours are still literals across four Kotlin files, so the reference and
+the code can drift until they move into one tokens file. That move is recorded and is its own build.
+
+---
+
 ## Built, awaiting confirmation — `0.0.44-dev` (Build 1)
 
 ### `FEAT-3` — A test ground for every control

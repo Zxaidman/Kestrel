@@ -13,6 +13,32 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### Design system — Kestrel's visual language, written down
+
+Kestrel's design system is published at https://claude.ai/artifact/7Gon69W2hBG8XwfYAiWLsD, built from the Android code at `main@7b74b78`. It
+documents what ships rather than proposing a new look: 64 tokens in three themes, twelve type styles,
+nine components with static previews and guidelines, the mark, and a cover.
+
+**Kestrel has five palettes, and the reason for each is now in one place.** The mark (gold
+`#E8A33D` on slate `#1E293B`, from the launcher icon and found nowhere in the UI), the application
+(Material 3, one slate-blue accent across three surfaces), the editor canvas (always dark, because it
+is a picture of a phone's screen), the pad (translucent, because it is drawn over somebody else's
+application) and the test ground's proof states.
+
+**Writing it down found four contrast failures in shipped code** — measured, not reported. Amber
+warning text on the light theme's surface is 1.78 : 1; the test ground's tile labels are 1.90 to
+2.62 : 1 in both dark themes. The system records them exactly and flags them rather than quietly
+re-tinting the reference, and they are `BUG-55`. Every other text-on-ground pair passes in all three
+themes.
+
+**Warning.** The colours are still hand-written literals in four Kotlin files, so the reference and
+the code can drift until they move into one tokens file — recorded as its own build. The previews are
+static renditions of Compose code, not live components.
+
+**Also found:** a branch this project did not make, `origin/cline/android-app-implementation` — a
+separate application called *GameDeck* built on the old `main`. Not merged and not touched; merging
+it would replace Kestrel's application rather than add to it.
+
 ### `main` catches up — `0.0.44-dev` merged
 
 `main` had been left at the state before the editor work began, ninety-seven commits behind, on a

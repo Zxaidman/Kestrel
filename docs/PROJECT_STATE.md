@@ -117,6 +117,16 @@ Build 1 of the re-sorted order, shipped in `0.0.44-dev` and `Unverified`:
 
 ---
 
+## Design system
+
+Kestrel's visual language is written down at https://claude.ai/artifact/7Gon69W2hBG8XwfYAiWLsD (`FEAT-69`, awaiting review). It documents what
+the code already does — five palettes, three themes, the components that exist — rather than a new
+look, and it is where a colour or a component is checked before anything new is drawn. It found four
+contrast failures in shipped code, recorded as `BUG-55`. The colours are still literals in four
+Kotlin files, so the reference can drift from the code until they move into one tokens file.
+
+---
+
 ## What comes next
 
 The order of work is in `todo-list.md` and was re-sorted around what a round costs rather than what

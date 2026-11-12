@@ -58,10 +58,10 @@ hardware.
 | --- | --- |
 | `done` | seventy-nine, including `CRIT-5`–`CRIT-10` and `FEAT-15` |
 | `superseded` | `FEAT-13` |
-| `testing` | — |
 | `testing` | Build 1 — `FEAT-3`, `BUG-3`, `BUG-4`, `BUG-54`, `FEAT-67`, `FEAT-68` |
+| `testing` | `FEAT-69` design system — awaiting review |
 | `building` | — |
-| `pending` | `CRIT-1`–`CRIT-4`, `BUG-3`–`BUG-8`, `FEAT-1`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
+| `pending` | `BUG-55`, `CRIT-1`–`CRIT-4`, `BUG-5`, `BUG-6`, `FEAT-1`, `FEAT-2`, `FEAT-4`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
 
@@ -1087,6 +1087,84 @@ was guessed. A hand said so, which outranks the arithmetic that produced 0.45.
 
 **Warning.** One hand, one device, one set of target applications. It is a better default than a
 guessed one and it is not a measurement of anybody else.
+
+---
+
+### `FEAT-69` — A design system, written down from what the code already does
+
+**Phase:** `testing` — published, awaiting the project owner's review: https://claude.ai/artifact/7Gon69W2hBG8XwfYAiWLsD (private until shared
+from its page).
+**Asked for:** after `0.0.44-dev` was merged. *"lets create design system for kestrel."*
+
+**Kestrel already has a visual language; it has never been written down.** It lives as literal
+colours scattered across three files, each palette with a reason the code comments give and nobody
+can find without reading them:
+
+- **The application** — Material 3, one slate-blue accent across three surfaces (light, grey dark,
+  true-black AMOLED), a 12dp button corner. `ui/theme/KestrelTheme.kt`.
+- **The editor canvas** — always dark whatever the theme, because it is a picture of the phone's
+  screen rather than a page. Its own blue for selection, amber for overlap, orange for a control off
+  the screen. `feature/editor/LayoutEditorScreen.kt`.
+- **The overlay** — translucent and theme-independent on purpose, because it is drawn over somebody
+  else's application and has to read on a white page and a black one. `platform/overlay/`.
+- **The test ground** — green for proven, amber for partial, periwinkle for held.
+  `feature/testground/`.
+
+**What gets built.** A published design-system reference documenting those four palettes and why
+each is separate, the type (system face for reading, monospace for every number a person compares),
+spacing, the one corner radius, and the components that already exist — buttons, the movable window,
+the status lines, the proof tiles, the pad itself — with live previews.
+
+**What does not.** No new look. Precedence is the project owner's words, then the system that already
+exists, then anything new; a design system that redesigned the product would be a redesign wearing a
+reference's clothes. Where the code is inconsistent — the amber `0xFFF2B441` and the orange
+`0xFFE0603A` are each written out by hand in a dozen places — the reference names one token for each
+and records the inconsistency, rather than quietly picking a winner in the code.
+
+**Follows from it, not part of it:** moving those literals into one Kotlin tokens file, so the code
+and the reference cannot drift. Recorded here so it is not forgotten; it touches every drawing path,
+so it wants its own build.
+
+**What was found while building it, and it changed the system:**
+
+- **There are five palettes, not four.** `ic_launcher_foreground.xml` is a deliberate mark — a double
+  chevron in gold `#E8A33D` on slate `#1E293B`, with a comment explaining why it is geometric — and
+  neither colour appears anywhere in the application's UI. The brand pair now leads the system.
+- **Brand slate vanishes on both dark surfaces** (1.27 and 1.44 : 1), so it is only ever placed on the
+  gold, which is the icon's own 6.78 : 1 pairing.
+- **Two contrast failures in shipped code**, measured rather than reported → `BUG-55`.
+- **The same orange `#E0603A` means two things** — the dark theme's `error` and the editor's
+  "off the screen". Kept as two tokens with a note, not merged, because they mean different things.
+
+---
+
+### `BUG-55` — Signal colours chosen for a dark ground are used as text on a light one
+
+**Phase:** `pending`.
+**Found by:** measuring every text-on-ground pair while writing the design system (`FEAT-69`). Nobody
+reported it; it was measured.
+
+The amber and green signal colours were picked for the editor canvas, which is always dark. They are
+then reused as **text on the application's own surface**, which follows the theme — so in the light
+theme they disappear, and on the test ground the reverse happens.
+
+| Where | Pair | Contrast | Needs |
+| --- | --- | --- | --- |
+| Floating block, warning line, **light** theme | `#F2B441` on `#FBFAFE` | **1.78 : 1** | 4.5 |
+| Test ground "left to prove", **light** theme | `#F2B441` on `#FBFAFE` | **1.78 : 1** | 4.5 |
+| Test ground tile labels, **grey dark** | `#E4E1E9` on lit / partial / held | **2.33 / 1.90 / 2.52** | 4.5 |
+| Test ground tile labels, **AMOLED** | `#E4E1E9` on lit / partial / held | **2.42 / 1.97 / 2.62** | 4.5 |
+
+Everything else measured passes, in all three themes — the full list is in the design system.
+
+**What it needs:** signal colours that mean the same thing in every theme but are *drawn* for the
+ground they land on — a darker amber and green for text on a light surface, and dark ink on the
+bright tile fills. That is two new token pairs and one change of ink, chosen when it is built and
+measured before it ships. The design system records today's values exactly and flags them, rather
+than quietly re-tinting the reference and leaving the code wrong.
+
+**Why the reference device did not show it:** the project owner uses a dark theme, where the floating
+block's amber reads well — and the test ground is one build old.
 
 ---
 
@@ -2966,6 +3044,23 @@ reality is a queue that has to be re-read to be trusted, which is most of the va
   become a file this build rejects.
 - **The test ground's judgement lives in `:core`.** What counts as *proven* is the thing worth
   testing, and it should not live somewhere only a phone can run it.
+
+---
+
+### Round `0.0.44-dev` merged — the design system, and a branch nobody here made
+
+- **`main` already held this work.** The previous round's fast-forward stood; there was nothing new to
+  merge until this round's records.
+- **The design system is `FEAT-69`**, built from the code at `main@7b74b78`, and it found `BUG-55`.
+- **A branch appeared that this project did not make.** `origin/cline/android-app-implementation` is a
+  separate application called *GameDeck* — package `com.gamedeck.app`, 81 files, about 4,700 lines,
+  committed on 18 August by a different author — branched from the old, pre-Kestrel `main`. It
+  rewrites the same `MainActivity.kt`, manifest and `app/build.gradle.kts` Kestrel uses. **Not merged
+  and not touched.** Merging it would replace Kestrel's application, not add to it. It is worth a look
+  for one reason: it has a navigation host and a launcher view-model, which is exactly the gap
+  `CRIT-2` and `FEAT-5` are meant to close. Reading it for ideas is the project owner's call.
+- **The model was switched to the newest** by the project owner in the session itself; nothing in the
+  repository changes for it.
 
 ---
 
