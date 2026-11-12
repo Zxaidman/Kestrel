@@ -41,10 +41,6 @@ public object GamepadCodes {
         -> null
     }
 
-    /** Whether this control is the right-hand one of its pair, which is what the engine asks. */
-    public fun isRight(control: GamepadControl): Boolean =
-        control == GamepadControl.RIGHT_STICK || control == GamepadControl.RIGHT_TRIGGER
-
     // Linux input event codes. Stable kernel ABI, not values chosen here.
     private const val BTN_SOUTH = 304
     private const val BTN_EAST = 305

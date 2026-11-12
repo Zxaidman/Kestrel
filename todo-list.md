@@ -60,7 +60,7 @@ hardware.
 | `superseded` | `FEAT-13` |
 | `testing` | Build 1 — `FEAT-3`, `BUG-3`, `BUG-4`, `BUG-54`, `FEAT-67`, `FEAT-68` |
 | `testing` | `FEAT-69` design system — awaiting review |
-| `building` | Build 2 — `CRIT-3`, `CRIT-2`, `BUG-55` |
+| `building` | Build 2 — `CRIT-3`, `CRIT-2`, `BUG-55`, `BUG-56` |
 | `pending` | `CRIT-1`, `CRIT-4`, `BUG-5`, `BUG-6`, `FEAT-1`, `FEAT-2`, `FEAT-4`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -148,7 +148,26 @@ permission, with the provider's authority on the application's id.
 `platform/` matched `diagnostics/SetupScreen.kt` — the URL `https://shizuku.rikka.app/` in a link,
 not a call.
 
-**Still to do in Build 2:** the input backend behind an interface (`ADR-002`).
+**Built in Build 2, step 2 — the input backend behind an interface (`ADR-002`).**
+`core/input/InputBackend` in controller terms only; `platform/input/virtual/VirtualControllerInput`
+implements it with the uinput encoding moved out of `InputEngine` unchanged; the engine now shapes,
+coalesces and records, and knows nothing about kernel codes.
+
+**Done with no device in the loop, so the bar was "not one byte changed".** `WrittenBytesTest` was
+written against the engine *before* the seam — a fake shell records the exact text written for every
+kind of control — run green there, then run green again after with its expected values untouched.
+
+**Two more things the seam surfaced, both fixed:**
+- **A screen was passing raw Linux kernel codes** — the diagnostics screen's hold buttons were
+  `HoldButton("A", 304)`, which `CLAUDE.md` §5 forbids. Invisible until the engine stopped accepting
+  numbers; now they pass `GamepadControl.A` and so on.
+- **`BUG-56`**: the session kept an engine whose stream had failed to open.
+
+**One visible change, deliberate:** the "sent" trail in a diagnostic report records controls by name —
+`a down`, not `304 down` — and triggers as their shaped value without the kernel number. The engine
+no longer knows those numbers, and a report a person reads is clearer for it.
+
+**Phase:** `testing` once Build 2 ships — `CRIT-3` is complete in code; unverified on a device.
 
 ---
 
@@ -1220,6 +1239,26 @@ pairing *fails*, so it cannot be quietly simplified back.
 
 Every value measured against the most tinted ground it lands on, using Material's tonal-elevation
 formula — so it is a calculation, not a reading off the reference device's screen.
+
+---
+
+### `BUG-56` — A session reported its controls connected when the write path had failed
+
+**Phase:** `building` — Build 2, `0.0.45-dev`.
+**Found by:** reading the session's start-up while cutting the input backend seam (`CRIT-3`). Never
+reported — it only shows when the stream fails to open, which the reference device has not done.
+
+```kotlin
+InputEngine(shell).also { if (!it.start(VirtualControllerBackend.STREAM)) null }
+```
+
+`also` discards its lambda's result, so the `null` goes nowhere and the engine is kept whether or not
+its stream opened. The session then tells the user *"On-screen controls are connected to it"* while
+every write fails with *"The stream is not open"*, and the branch written for exactly this case —
+*"Controller created, but the write path did not open"* — cannot be reached.
+
+**Fixed** by keeping the engine only if it started (`takeIf`), so the message the code already had for
+this case is the one shown. The only behaviour that changes is the failure path.
 
 ---
 

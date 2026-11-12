@@ -13,6 +13,27 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.45-dev` — The input backend behind an interface (`CRIT-3`, part two)
+
+`ADR-002` said input sits behind a backend interface; in code, the engine took a Shizuku binder and
+wrote kernel event codes itself. Now `InputBackend` in `:core` speaks controller terms only, the
+virtual controller implements it in `:platform`, and the engine shapes, coalesces and records without
+knowing what a uinput stream is.
+
+**This is the highest-risk code in the project and it was refactored with no device in the loop**, so
+the bar was not "it compiles" but "not one byte changed". `WrittenBytesTest` records the exact text
+written for every kind of control through a fake shell. It was written and run green against the old
+engine first, then run green against the new one with its expected values untouched.
+
+**The seam surfaced two faults.** The diagnostics screen's hold buttons passed raw Linux kernel codes
+(`304` for A) — invisible until the engine stopped accepting numbers. And `BUG-56`: the session kept an
+engine whose stream had failed to open, because `.also { if (!started) null }` discards its result —
+so the user was told the controls were connected while every write failed.
+
+**Changed on purpose:** a diagnostic report's "sent" trail names controls (`a down`) rather than kernel
+codes (`304 down`). **Warning:** byte-identical output is proven on the JVM; the path has not been run on
+a device since.
+
 ### `0.0.45-dev` — Five modules, and the walls are real (`CRIT-3`, part one)
 
 Every line of product code lived in `:app`, and `PROJECT_STRUCTURE.md` had described `feature/`,

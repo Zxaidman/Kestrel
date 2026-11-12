@@ -72,6 +72,10 @@ public enum class GamepadControl(
     DPAD("dpad", ControlForm.DPAD, "D-pad"),
     ;
 
+    /** Whether this is the right-hand control of a pair: the right stick or the right trigger. */
+    public val isRight: Boolean
+        get() = this == RIGHT_STICK || this == RIGHT_TRIGGER
+
     public companion object {
         public fun of(wireName: String): GamepadControl? =
             entries.firstOrNull { it.wireName == wireName }

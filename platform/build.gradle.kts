@@ -30,6 +30,12 @@ android {
         targetCompatibility = javaVersion
     }
 
+    testOptions {
+        // The engine is tested on the JVM with a fake shell. The binder interface it implements
+        // comes from the Android stub jar, whose methods throw unless told to return defaults.
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildFeatures {
         // The privileged shell's binder interface is generated from AIDL, and it lives beside the
         // Shizuku code that serves it.

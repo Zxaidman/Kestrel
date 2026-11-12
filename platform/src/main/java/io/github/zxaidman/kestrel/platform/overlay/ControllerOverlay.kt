@@ -31,7 +31,6 @@ import io.github.zxaidman.kestrel.core.layout.PixelRect
 import io.github.zxaidman.kestrel.core.layout.effectiveShapeFor
 import io.github.zxaidman.kestrel.core.layout.resolve
 import io.github.zxaidman.kestrel.core.layout.scaledBy
-import io.github.zxaidman.kestrel.platform.input.GamepadCodes
 import io.github.zxaidman.kestrel.platform.input.InputEngine
 import kotlin.math.hypot
 import kotlin.math.max
@@ -1083,7 +1082,7 @@ private class ClusterView(
         when (control.kind) {
             ControlKind.ANALOG_TRIGGER -> startRamp()
             ControlKind.DIGITAL_TRIGGER -> sendTrigger(control, 1.0)
-            else -> control.binds?.let { GamepadCodes.buttonCode(it) }?.let { engine.button(it, true) }
+            else -> control.binds?.let { engine.button(it, true) }
         }
     }
 
@@ -1093,7 +1092,7 @@ private class ClusterView(
         when (control.kind) {
             ControlKind.ANALOG_TRIGGER -> startRamp()
             ControlKind.DIGITAL_TRIGGER -> sendTrigger(control, 0.0)
-            else -> control.binds?.let { GamepadCodes.buttonCode(it) }?.let { engine.button(it, false) }
+            else -> control.binds?.let { engine.button(it, false) }
         }
     }
 
@@ -1159,12 +1158,12 @@ private class ClusterView(
 
     private fun sendStick(control: PlacedControl, x: Double, y: Double) {
         val binds = control.binds ?: return
-        if (GamepadCodes.isRight(binds)) engine.rightStick(x, y, profile) else engine.stick(x, y, profile)
+        if (binds.isRight) engine.rightStick(x, y, profile) else engine.stick(x, y, profile)
     }
 
     private fun sendTrigger(control: PlacedControl, value: Double) {
         val binds = control.binds ?: return
-        engine.trigger(value, profile, GamepadCodes.isRight(binds))
+        engine.trigger(value, profile, binds.isRight)
     }
 
     // --- the trigger ramp ---------------------------------------------------------------------

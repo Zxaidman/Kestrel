@@ -103,6 +103,26 @@ interface InputBackend {
 
 The exact interface may evolve. The architectural boundary must remain.
 
+### The interface as built (`0.0.45-dev`)
+
+`core/input/InputBackend.kt` exists now, implemented by
+`platform/input/virtual/VirtualControllerInput.kt`, and `InputEngine` talks to nothing else. It keeps
+the boundary above and differs from the sketch in three ways, each on purpose:
+
+- **Not `suspend`.** Writes come from touch callbacks and from the engine's coalescing thread at about
+  sixty a second, and each is one write to an already-open stream. Coroutines would add machinery to
+  the hottest path in the product for nothing it needs.
+- **Typed per control, not a generic `sendAxis`.** `stick(right, x, y)` sends both axes of a stick in
+  one report, because the kernel reads them together; two separate axis writes would let a reader see
+  a stick that moved diagonally in two steps.
+- **No `id` or `capabilities` yet.** There is one backend. Capability-driven selection (`CLAUDE.md`
+  §5) is written when the second one exists and there is something to choose between — not
+  speculatively, where it could only be tested against itself.
+
+It was cut with no device in the loop, so `WrittenBytesTest` in `:platform` pins the exact text written
+for every kind of control. It was run green against the engine before the seam and again after,
+with its expected values unchanged.
+
 ## Capability model
 
 Potential capabilities:

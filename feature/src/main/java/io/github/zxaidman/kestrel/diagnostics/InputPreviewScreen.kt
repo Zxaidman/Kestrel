@@ -344,10 +344,13 @@ public fun InputPreviewScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                HoldButton("A", 304)
-                HoldButton("B", 305)
-                HoldButton("X", 307)
-                HoldButton("Y", 308)
+                // Controls, not the kernel codes they become. These were `304`, `305`, `307`, `308`
+                // — a screen passing Linux event codes, which `CLAUDE.md` §5 forbids. It surfaced
+                // when the engine stopped accepting numbers (`CRIT-3`).
+                HoldButton("A", io.github.zxaidman.kestrel.core.input.GamepadControl.A)
+                HoldButton("B", io.github.zxaidman.kestrel.core.input.GamepadControl.B)
+                HoldButton("X", io.github.zxaidman.kestrel.core.input.GamepadControl.X)
+                HoldButton("Y", io.github.zxaidman.kestrel.core.input.GamepadControl.Y)
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -675,20 +678,20 @@ private fun TouchStick(profile: AnalogProfile, state: InputPreviewState) {
  * controller button is a state with a duration, so the press and the release are separate events.
  */
 @Composable
-private fun HoldButton(label: String, keyCode: Int) {
+private fun HoldButton(label: String, control: io.github.zxaidman.kestrel.core.input.GamepadControl) {
     Text(
         text = " $label ",
         fontFamily = FontFamily.Monospace,
         modifier = Modifier
             .padding(4.dp)
-            .pointerInput(keyCode) {
+            .pointerInput(control) {
                 detectTapGestures(
                     onPress = {
-                        SessionState.engine?.button(keyCode, true)
+                        SessionState.engine?.button(control, true)
                         // Waits for the finger to lift or the gesture to be cancelled; either way
                         // the button must be released, or it stays held on the device.
                         tryAwaitRelease()
-                        SessionState.engine?.button(keyCode, false)
+                        SessionState.engine?.button(control, false)
                     },
                 )
             },

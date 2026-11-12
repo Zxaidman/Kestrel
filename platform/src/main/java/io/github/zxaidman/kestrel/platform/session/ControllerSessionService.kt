@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import io.github.zxaidman.kestrel.platform.input.InputEngine
 import io.github.zxaidman.kestrel.platform.overlay.ControllerOverlay
 import io.github.zxaidman.kestrel.platform.input.virtual.VirtualControllerBackend
+import io.github.zxaidman.kestrel.platform.input.virtual.VirtualControllerInput
 import io.github.zxaidman.kestrel.platform.shizuku.ShizukuCapability
 
 /** What the session is doing, for any screen that needs to say so. */
@@ -104,7 +105,10 @@ public class ControllerSessionService : Service() {
             val live = VirtualControllerBackend.holders(shell).isNotBlank()
 
             val engine = if (live) {
-                InputEngine(shell).also { if (!it.start(VirtualControllerBackend.STREAM)) null }
+                // Kept only if it started. This read `.also { if (!it.start(…)) null }`, and `also`
+                // discards its lambda's result — so an engine whose stream never opened was kept,
+                // the user was told the controls were connected, and every write failed (`BUG-56`).
+                InputEngine(VirtualControllerInput(shell)).takeIf { it.start() }
             } else {
                 null
             }
