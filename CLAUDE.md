@@ -20,7 +20,8 @@ section summarises it and is corrected from it when the two disagree.
 A person can start a session, get a virtual gamepad over another application, arrange every control
 by dragging or by typing numbers, keep separate landscape and portrait arrangements, tune stick and
 trigger feel, and prove every control end to end on a test screen. **They cannot launch a game from
-Kestrel** — there is no home screen, no discovery and no launcher, and that is the gap.
+Kestrel** — a home page and navigation exist as of `0.0.45-dev` (unverified on the device), but there
+is no discovery and no launcher, and that is the gap.
 
 Phase 0 passed on the reference device — a Xiaomi Redmi Note 13 5G on HyperOS 3.0.3, Android 15 —
 and `ADR-INPUT-001` is Accepted, scoped to that device. The evidence is in `docs/phase0/results/`.
@@ -65,7 +66,7 @@ domain type needs an Android API, it belongs in `platform/`.
 What an agent can actually verify here:
 
 ```bash
-./gradlew :core:test    # JVM only, no SDK needed — works in a bare container. 272 tests.
+./gradlew :core:test    # JVM only, no SDK needed — works in a bare container. 277 tests.
 ./gradlew build         # everything: compiles both modules, lints, tests. Needs the SDK.
 ```
 

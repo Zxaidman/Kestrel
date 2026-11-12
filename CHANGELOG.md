@@ -13,6 +13,24 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/). Seman
 
 ## [Unreleased]
 
+### `0.0.45-dev` — A front door: home, settings, and Back that goes back (`CRIT-2`, `BUG-57`)
+
+What opens is now a home page rather than the diagnostics harness: what Kestrel is, whether the
+controller, Shizuku and the layout are ready, a Start / Stop button, and three destinations — edit
+layout, test ground, settings. Display and storage preferences moved to Settings. The harness is
+unchanged, one quiet text button away, under *Developer tools*.
+
+`BUG-57`: nothing handled the system Back gesture. On Android 10 and 11, which `ADR-004` supports,
+Back from the editor ended the activity and **lost unsaved edits without the dialog** the Exit button
+shows. Back now goes through that same check in the editor, closes the test ground, and pops every
+other page; only Home lets it leave. **Reasoned from the platform's documented Back behaviour, not
+reproduced** — the reference device is Android 15, where Back only backgrounds the activity.
+
+**Verified:** `./gradlew build` passes with the SDK installed — five modules, lint, 277 `:core` tests
+and `WrittenBytesTest`. **Not verified:** any of it on a device. The pages are new code that only a
+hand has judged before, and none has judged these.
+
+
 ### `0.0.45-dev` — The input backend behind an interface (`CRIT-3`, part two)
 
 `ADR-002` said input sits behind a backend interface; in code, the engine took a Shizuku binder and

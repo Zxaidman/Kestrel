@@ -31,7 +31,7 @@ a claim about other hardware.
 
 ---
 
-## Where the project is — build `0.0.44-dev`
+## Where the project is — build `0.0.45-dev`
 
 **Kestrel is a working virtual controller with a working layout editor, and is not yet an
 application anybody could be handed.** Both halves of that sentence matter.
@@ -41,8 +41,9 @@ screen over another application, arrange every control by dragging or by typing 
 separate arrangements for landscape and portrait, tune stick shaping and trigger feel, and prove
 every control end to end on a test screen.
 
-What they cannot do: **launch a game from Kestrel.** There is no home screen, no application
-discovery, and no launcher. The product's front door has not been built.
+What they cannot do: **launch a game from Kestrel.** `0.0.45-dev` adds a home page, settings and
+navigation (`CRIT-2`, not yet tried on the device), but there is still no application discovery and
+no launcher. The front door exists; there is nothing behind it to open.
 
 ---
 
@@ -56,7 +57,7 @@ first. This table is the honest position rather than the planned one.
 | Phase | Position | Evidence |
 | --- | --- | --- |
 | **0 — Input feasibility** | **Complete** | `Tested`. `ADR-INPUT-001` Accepted, scoped to the reference device. `docs/phase0/results/` |
-| **1 — Core application** | **Part built, and it is the gap** | Configuration, JSON schema, settings, storage and the layout repository are `Tested`. **Application shell, navigation, discovery and launching do not exist** — `CRIT-2`, `CRIT-3`, `FEAT-5` |
+| **1 — Core application** | **Part built, and it is the gap** | Configuration, JSON schema, settings, storage and the layout repository are `Tested`. Five modules with compiler-checked walls (`CRIT-3`) and a home page with navigation (`CRIT-2`) are built and `Unverified` on the device. **Discovery and launching do not exist** — `FEAT-5` |
 | **2 — Controller engine** | **Largely built** | `Tested`: overlay windows, touch model, analog shaping, two-rate triggers, idle fade and hide, per-orientation scale |
 | **3 — Layout editor** | **Built, and the most exercised part of the product** | `Tested` across twenty build-and-test rounds. Canvas, grid, snapping, anchors, windows, typed values, per-orientation save |
 | **4 — Gaming session** | **Part built** | Session service, notification and lease exist. `Tested` as a session; not as a *gaming* session, because there is nothing to launch |
@@ -74,7 +75,7 @@ they are Build 2 in the re-sorted order of work and not later.
 
 ## Testing phase
 
-**`0.0.44-dev` is a development build, not a release candidate.** It is debug-signed, its version
+**`0.0.45-dev` is a development build, not a release candidate.** It is debug-signed, its version
 is below `0.1.0`, and `CRIT-1` — a release signing key that is not committed to this repository —
 is open. **Do not treat any build from this branch as distributable.**
 
@@ -82,11 +83,11 @@ is open. **Do not treat any build from this branch as distributable.**
 
 The loop is: build → install on the reference device → the project owner tests against a written
 procedure → results recorded in `todo-list.md` → the next build. Twenty rounds have run this way,
-from `0.0.25-dev` to `0.0.44-dev`.
+from `0.0.25-dev` to `0.0.45-dev`.
 
 | Level | State |
 | --- | --- |
-| **Unit tests** (`:core`, JVM) | **272 tests, passing.** Geometry, JSON, schema validation, layout rules, analog shaping, capability selection, control proofs |
+| **Unit tests** (`:core`, JVM) | **277 tests, passing**, plus `WrittenBytesTest` in `:platform`, which pins the exact bytes the controller writes. Geometry, JSON, schema validation, layout rules, analog shaping, capability selection, control proofs |
 | **Lint** | Passing; lint errors fail the build by design |
 | **Instrumentation tests** | **None.** Nothing automated covers lifecycle, services or overlays |
 | **Device tests** | **Manual only**, by the project owner, on one device, against a written procedure per build |
@@ -103,6 +104,14 @@ Build 1 of the re-sorted order, shipped in `0.0.44-dev` and `Unverified`:
 - `BUG-54` — a window can no longer outgrow the screen
 - `FEAT-67` — rows labelled at the row
 - `FEAT-68` — the measured trigger defaults
+
+Build 2, shipped in `0.0.45-dev` and `Unverified`:
+
+- `CRIT-2` — home page, settings page, developer tools behind a door, Back that goes back
+- `CRIT-3` — five modules; the input backend behind `InputBackend` (byte-identical on the JVM)
+- `BUG-55` — signal colours readable on light and dark grounds
+- `BUG-56` — a session no longer claims its controls are connected when the stream failed
+- `BUG-57` — Back in the editor asks before losing unsaved work
 
 ### The honest limits
 
@@ -134,8 +143,8 @@ is most wanted. In short:
 
 1. **Build 1** — the test ground, so every later round is cheaper to confirm. *Shipped, awaiting a
    device result.*
-2. **Build 2** — `CRIT-3` modules and `CRIT-2` home screen, together. Changes nothing visible, and
-   delaying it compounds.
+2. **Build 2** — `CRIT-3` modules and `CRIT-2` home screen, together, with `BUG-55`–`BUG-57`.
+   *Shipped in `0.0.45-dev`, awaiting a device result.*
 3. **Build 3** — the small editor batch, sharing one schema version bump.
 4. **Build 4** — `FEAT-5` discovery and launching, which is the gap between here and a product.
 

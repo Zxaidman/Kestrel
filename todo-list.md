@@ -52,7 +52,7 @@ hardware.
 
 ---
 
-## State of the queue — build `0.0.44-dev`
+## State of the queue — build `0.0.45-dev`
 
 | Phase | Items |
 | --- | --- |
@@ -60,7 +60,7 @@ hardware.
 | `superseded` | `FEAT-13` |
 | `testing` | Build 1 — `FEAT-3`, `BUG-3`, `BUG-4`, `BUG-54`, `FEAT-67`, `FEAT-68` |
 | `testing` | `FEAT-69` design system — awaiting review |
-| `building` | Build 2 — `CRIT-3`, `CRIT-2`, `BUG-55`, `BUG-56` |
+| `testing` | Build 2 — `CRIT-3`, `CRIT-2`, `BUG-55`, `BUG-56`, `BUG-57` |
 | `pending` | `CRIT-1`, `CRIT-4`, `BUG-5`, `BUG-6`, `FEAT-1`, `FEAT-2`, `FEAT-4`–`FEAT-9`, `FEAT-30`, `FEAT-33`, `FEAT-38`–`FEAT-42`, `FEAT-45`, `FEAT-46` |
 
 ---
@@ -90,7 +90,7 @@ lost no future version can ever update an installed Kestrel.
 
 ### `CRIT-2` — A home screen, and navigation
 
-**Phase:** `building` — Build 2, `0.0.45-dev`.
+**Phase:** `testing` — Build 2, `0.0.45-dev`.
 
 **Why it blocks.** What opens today is a diagnostics harness: every developer control, every raw
 number, one long scroll. It was the right thing while the question was "does any of this work". It
@@ -105,11 +105,27 @@ build … hide unnecessary options from the homepage and good navigation setting
 
 **Ordered after** `FEAT-2` (test ground) at the project owner's request.
 
+**Built in `0.0.45-dev`, `Unverified` on the device:**
+
+- **Home** is what opens. Kestrel's name and one line about it; a status card — controller, Shizuku,
+  layout — each in plain words and green only when it is good; Start / Stop controller; and three
+  destinations: *Edit layout*, *Test ground*, *Settings*.
+- **Settings** holds the display preferences and the storage location, moved off the front page.
+- **Developer tools** is the old diagnostics page, unchanged, behind a quiet text button at the
+  foot of Home — a deliberate door, not a destination.
+- **Back** returns to the page before; only Home lets it leave Kestrel (`BUG-57`).
+- Setup still comes first while anything is outstanding, as before.
+
+**Not in it, on purpose:** discovery and launching (`FEAT-5`), profiles, skins. Home has room for
+them; adding them now would be building them against a screen that has not been judged yet. A list
+was used for the back stack rather than the Navigation library — three pages do not need a
+dependency.
+
 ---
 
 ### `CRIT-3` — Modular architecture, as `PROJECT_STRUCTURE.md` already describes it
 
-**Phase:** `building` — Build 2, `0.0.45-dev`.
+**Phase:** `testing` — Build 2, `0.0.45-dev`.
 
 **Why it blocks.** Every line of product code lives in `:app`. `PROJECT_STRUCTURE.md` has described
 `feature/`, `platform/` and `data/` modules since before any of it was written, and the gap between
@@ -1183,7 +1199,7 @@ so it wants its own build.
 
 ### `BUG-55` — Signal colours chosen for a dark ground are used as text on a light one
 
-**Phase:** `building` — Build 2, `0.0.45-dev`..
+**Phase:** `testing` — Build 2, `0.0.45-dev`.
 **Found by:** measuring every text-on-ground pair while writing the design system (`FEAT-69`). Nobody
 reported it; it was measured.
 
@@ -1244,7 +1260,7 @@ formula — so it is a calculation, not a reading off the reference device's scr
 
 ### `BUG-56` — A session reported its controls connected when the write path had failed
 
-**Phase:** `building` — Build 2, `0.0.45-dev`.
+**Phase:** `testing` — Build 2, `0.0.45-dev`.
 **Found by:** reading the session's start-up while cutting the input backend seam (`CRIT-3`). Never
 reported — it only shows when the stream fails to open, which the reference device has not done.
 
@@ -1259,6 +1275,26 @@ every write fails with *"The stream is not open"*, and the branch written for ex
 
 **Fixed** by keeping the engine only if it started (`takeIf`), so the message the code already had for
 this case is the one shown. The only behaviour that changes is the failure path.
+
+---
+
+### `BUG-57` — Back leaves Kestrel instead of going back, and can skip the unsaved-edits dialog
+
+**Phase:** `testing` — Build 2, `0.0.45-dev`, with `CRIT-2`.
+**Found by:** reading the activity while adding navigation. **Reasoned, not measured.**
+
+Nothing in Kestrel handled the system Back gesture. From the editor or the test ground, Back leaves the
+application rather than returning to where the user came from. What that costs depends on the
+platform version:
+
+- **Android 12 and later** move a root activity to the background on Back rather than ending it, so
+  the editor is still there on return. A nuisance, not a loss. The reference device is Android 15.
+- **Android 10 and 11**, which `ADR-004` supports, end the activity — and **unsaved layout edits go
+  with it, without the "Leave without saving?" dialog** the Exit button shows.
+
+**Fixed** by handling Back everywhere it means something: the editor routes it through the same
+leave check as its Exit button, the test ground closes, and every other page returns to the one before
+it. Only the home page lets Back leave Kestrel.
 
 ---
 

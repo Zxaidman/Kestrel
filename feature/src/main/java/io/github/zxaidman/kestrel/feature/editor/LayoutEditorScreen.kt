@@ -244,6 +244,14 @@ public fun LayoutEditorScreen(
     val dirtyHere = if (portrait) dirtyPortrait else dirtyLandscape
     val dirtyOther = if (portrait) dirtyLandscape else dirtyPortrait
 
+    // Back goes through the same check as the Exit button, so unsaved work is asked about rather
+    // than lost (`BUG-57`). While the dialog is up, Back dismisses it instead.
+    androidx.activity.compose.BackHandler {
+        if (leaving) leaving = false
+        else if (dirtyHere || dirtyOther) leaving = true
+        else onClose()
+    }
+
     // Where the block was put, per orientation. One position for both meant that moving it out of
     // the way in landscape put it in the way upright — the pad is in a different place in each,
     // which is the whole reason a layout has two arrangements.

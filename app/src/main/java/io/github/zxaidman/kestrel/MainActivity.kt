@@ -203,8 +203,17 @@ class MainActivity : ComponentActivity() {
                     var proving by androidx.compose.runtime.remember {
                         androidx.compose.runtime.mutableStateOf(false)
                     }
+                    // Where the user is, as a back stack with Home at the bottom (`CRIT-2`). A list
+                    // rather than the Navigation library: three pages and a Back gesture do not need
+                    // a dependency, and this is the whole of it.
+                    var stack by androidx.compose.runtime.remember {
+                        androidx.compose.runtime.mutableStateOf(listOf(Page.HOME))
+                    }
+                    fun go(page: Page) { stack = stack + page }
 
                     if (proving) {
+                        // Back closes the test ground. It used to leave Kestrel (`BUG-57`).
+                        androidx.activity.compose.BackHandler { proving = false }
                         // Its own page rather than a panel on the diagnostics screen. Proving a pad
                         // means pressing every control on it, and a screen with other things to
                         // press on it is a screen where a stray tap is indistinguishable from a
@@ -285,13 +294,38 @@ class MainActivity : ComponentActivity() {
                                 onFolder = ::chooseFolder,
                             )
                         } else {
-                            InputPreviewScreen(
-                                state = preview,
-                                onSave = ::saveReport,
-                                onShare = ::shareReport,
-                                onEditLayout = { editing = openLayoutForEditing() },
-                                onTestGround = { proving = true },
-                            )
+                            // Every page but Home goes back to the one before it. Only Home lets
+                            // Back leave Kestrel, which is what Back means on a home screen.
+                            androidx.activity.compose.BackHandler(enabled = stack.size > 1) {
+                                stack = stack.dropLast(1)
+                            }
+                            when (stack.last()) {
+                                Page.HOME -> io.github.zxaidman.kestrel.feature.home.HomeScreen(
+                                    refresh = tick,
+                                    onEditLayout = { editing = openLayoutForEditing() },
+                                    onTestGround = { proving = true },
+                                    onSettings = { go(Page.SETTINGS) },
+                                    onDeveloper = { go(Page.DEVELOPER) },
+                                )
+                                Page.SETTINGS -> io.github.zxaidman.kestrel.feature.settings.SettingsScreen(
+                                    onBack = { stack = stack.dropLast(1) },
+                                )
+                                // The diagnostics harness that used to be the front page, unchanged
+                                // and behind a deliberate door.
+                                Page.DEVELOPER -> Column {
+                                    io.github.zxaidman.kestrel.ui.theme.BackHeader(
+                                        "Developer tools",
+                                        onBack = { stack = stack.dropLast(1) },
+                                    )
+                                    InputPreviewScreen(
+                                        state = preview,
+                                        onSave = ::saveReport,
+                                        onShare = ::shareReport,
+                                        onEditLayout = { editing = openLayoutForEditing() },
+                                        onTestGround = { proving = true },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -462,3 +496,6 @@ class MainActivity : ComponentActivity() {
                 device.supportsSource(android.view.InputDevice.SOURCE_JOYSTICK)
         } ?: false
 }
+
+/** The pages the activity routes between. The editor and the test ground take the whole screen. */
+private enum class Page { HOME, SETTINGS, DEVELOPER }

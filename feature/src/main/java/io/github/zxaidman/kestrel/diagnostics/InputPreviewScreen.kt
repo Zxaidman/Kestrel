@@ -291,7 +291,6 @@ public fun InputPreviewScreen(
             )
         }
 
-        StorageSection(context)
 
         Section("Controller session") {
             Mono(
@@ -478,93 +477,6 @@ public fun InputPreviewScreen(
             )
         }
 
-        Section("Display") {
-            val display = AppSettings.current.value.display
-
-            fun set(update: (io.github.zxaidman.kestrel.core.settings.DisplayPreferences) ->
-                io.github.zxaidman.kestrel.core.settings.DisplayPreferences,
-            ) {
-                AppSettings.update { it.copy(display = update(it.display)) }
-                AppSettings.persist(context)
-                // Applied at once by the activity, which watches this setting. This screen used to
-                // reach into the activity to do it, and a screen in :feature cannot see the activity
-                // that is assembled in :app.
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Switch(
-                    checked = display.fullScreen,
-                    onCheckedChange = { on -> set { it.copy(fullScreen = on) } },
-                )
-                Text("Full screen", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = display.drawUnderCutout,
-                    onCheckedChange = { on -> set { it.copy(drawUnderCutout = on) } },
-                )
-                Text("Use the notch area")
-            }
-
-            Mono("\norientation")
-            io.github.zxaidman.kestrel.core.settings.AppOrientation.entries.chunked(3).forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    row.forEach { option ->
-                        KButton(
-                            onClick = { set { it.copy(orientation = option) } },
-                            enabled = display.orientation != option,
-                        ) { Text(option.wireName) }
-                    }
-                }
-            }
-
-            Mono("\ntheme")
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                io.github.zxaidman.kestrel.core.settings.AppTheme.entries.forEach { option ->
-                    KButton(
-                        onClick = { set { it.copy(theme = option) } },
-                        enabled = display.theme != option,
-                    ) { Text(option.wireName) }
-                }
-            }
-            // Two questions, not three answers: light or dark, and then how dark. Offering them as
-            // one row of three made them look like one question, which is what they are not.
-            val systemIsDark = androidx.compose.foundation.isSystemInDarkTheme()
-            val dark = io.github.zxaidman.kestrel.ui.theme.isDark(display.theme, systemIsDark)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            ) {
-                Switch(
-                    checked = display.trueBlack,
-                    enabled = dark,
-                    onCheckedChange = { on -> set { it.copy(trueBlack = on) } },
-                )
-                Text(
-                    text = if (dark) {
-                        "True black (AMOLED)"
-                    } else {
-                        "True black (AMOLED) — applies when dark"
-                    },
-                )
-            }
-            Text(
-                text = "True black is not a matter of taste on this panel: a black pixel is an " +
-                    "unlit one. The pad keeps its own colours whatever is chosen here — it is " +
-                    "drawn over other applications and has to be legible on a white page and a " +
-                    "black one both.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-
         Section("Shaping and size") {
             // Moved into the layout editor's settings sheet, which is the one place they can be
             // judged: the pad is on screen there and a slider is next to the thing it changes.
@@ -709,7 +621,7 @@ private fun line(target: String, profile: String?, reason: MatchReason): String 
 private fun format(label: String, value: Double): String = "%s %+.3f".format(label, value)
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+internal fun Section(title: String, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleSmall)
@@ -719,7 +631,7 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Mono(text: String) {
+internal fun Mono(text: String) {
     Text(text = text, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
 }
 
@@ -736,7 +648,7 @@ private fun Labelled(label: String, value: Float) {
  * point of asking is that the user should not discover that afterwards.
  */
 @Composable
-private fun StorageSection(context: android.content.Context) {
+internal fun StorageSection(context: android.content.Context) {
     var refresh by remember { mutableStateOf(0) }
     val chosen = remember(refresh) { KestrelStorage.usingChosenFolder(context) }
     val store = remember(refresh) { KestrelStorage.current(context) }
@@ -869,4 +781,99 @@ private fun reloadLayout(context: android.content.Context): String {
     }
 }
 
+/**
+ * How much of the screen Kestrel takes, which way up it sits, and how it is painted.
+ *
+ * Lifted out of the diagnostics screen so Settings can show it (`CRIT-2`): these are settings a person
+ * changes, not developer readouts, and a setting that lives only behind "Developer tools" is one
+ * nobody finds. One function, so there is one place each setting is changed.
+ */
+@Composable
+internal fun DisplaySection(context: android.content.Context) {
+    Section("Display") {
+        val display = AppSettings.current.value.display
 
+        fun set(update: (io.github.zxaidman.kestrel.core.settings.DisplayPreferences) ->
+            io.github.zxaidman.kestrel.core.settings.DisplayPreferences,
+        ) {
+            AppSettings.update { it.copy(display = update(it.display)) }
+            AppSettings.persist(context)
+            // Applied at once by the activity, which watches this setting. This screen used to
+            // reach into the activity to do it, and a screen in :feature cannot see the activity
+            // that is assembled in :app.
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Switch(
+                checked = display.fullScreen,
+                onCheckedChange = { on -> set { it.copy(fullScreen = on) } },
+            )
+            Text("Full screen", modifier = Modifier.weight(1f))
+            Switch(
+                checked = display.drawUnderCutout,
+                onCheckedChange = { on -> set { it.copy(drawUnderCutout = on) } },
+            )
+            Text("Use the notch area")
+        }
+
+        Mono("\norientation")
+        io.github.zxaidman.kestrel.core.settings.AppOrientation.entries.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                row.forEach { option ->
+                    KButton(
+                        onClick = { set { it.copy(orientation = option) } },
+                        enabled = display.orientation != option,
+                    ) { Text(option.wireName) }
+                }
+            }
+        }
+
+        Mono("\ntheme")
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            io.github.zxaidman.kestrel.core.settings.AppTheme.entries.forEach { option ->
+                KButton(
+                    onClick = { set { it.copy(theme = option) } },
+                    enabled = display.theme != option,
+                ) { Text(option.wireName) }
+            }
+        }
+        // Two questions, not three answers: light or dark, and then how dark. Offering them as
+        // one row of three made them look like one question, which is what they are not.
+        val systemIsDark = androidx.compose.foundation.isSystemInDarkTheme()
+        val dark = io.github.zxaidman.kestrel.ui.theme.isDark(display.theme, systemIsDark)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Switch(
+                checked = display.trueBlack,
+                enabled = dark,
+                onCheckedChange = { on -> set { it.copy(trueBlack = on) } },
+            )
+            Text(
+                text = if (dark) {
+                    "True black (AMOLED)"
+                } else {
+                    "True black (AMOLED) — applies when dark"
+                },
+            )
+        }
+        Text(
+            text = "True black is not a matter of taste on this panel: a black pixel is an " +
+                "unlit one. The pad keeps its own colours whatever is chosen here — it is " +
+                "drawn over other applications and has to be legible on a white page and a " +
+                "black one both.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}

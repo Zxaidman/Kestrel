@@ -25,8 +25,8 @@ another application, arrange every control by dragging or by typing numbers, kee
 and portrait arrangements, tune stick and trigger feel, and prove every control end to end on a test
 screen.
 
-**They cannot launch a game from Kestrel.** There is no home screen, no application discovery and no
-launcher. That is the gap between this and a product, and it is what the next work is aimed at.
+**They cannot launch a game from Kestrel.** A home page and navigation now exist (`0.0.45-dev`, not
+yet tried on the device), but there is no application discovery and no launcher. That is the gap between this and a product, and it is what the next work is aimed at.
 
 The input feasibility question the project started with is **answered**: Phase 0 passed on the
 reference device and `ADR-INPUT-001` is Accepted, scoped to that device.
